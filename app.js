@@ -13,7 +13,7 @@ const petsRoutes = require('./routes/pets.routes');
 const servicosRoutes = require('./routes/servicos.routes');
 const agendamentosRoutes = require('./routes/agendamentos.routes');
 const funcionariosRoutes = require('./routes/funcionarios.routes');
-const { verificarAutenticacao } = require('./middlewares/autenticacao');
+const { verificarAutenticacao, verificarAdmin } = require('./middlewares/autenticacao');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,10 +70,7 @@ app.get('/', (req, res) => {
   res.redirect('/login');
 });
 
-app.delete('/usuarios/:id', verificarAutenticacao, async (req, res) => {
-  if (!req.session.usuario || req.session.usuario.email !== 'admin@biomapet.com') {
-    return res.json({ ok: false, erro: 'sem_permissao' });
-  }
+app.delete('/usuarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
   try {
     const row = await dbGet('SELECT email FROM usuarios WHERE id = ?', [req.params.id]);
     if (row && row.email === 'admin@biomapet.com') {

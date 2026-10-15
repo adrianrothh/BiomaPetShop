@@ -10,7 +10,7 @@ Integrantes
 - João Vitor Paranhos
 - Rafael Alexandre Alves Bandoch
 
-Link do Repositório: https://github.com/RafaelBandoch/BiomaPetShop-MM
+Link do Repositório: https://github.com/RafaelBandoch/BiomaPetShop-MM.
 
 ---
 

@@ -4,7 +4,7 @@
   "description": "Sistema web de agendamento para pet shop",
   "main": "app.js",
   "engines": {
-    "node": ">=20"
+  "node": ">=20.17.0"
   },
   "scripts": {
     "start": "node app.js",
@@ -22,7 +22,7 @@
     "express-ejs-layouts": "^2.5.1",
     "express-rate-limit": "^8.3.2",
     "express-session": "^1.18.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "jest": "^30.3.0",

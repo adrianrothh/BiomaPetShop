@@ -120,6 +120,11 @@ router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdm
 router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
   const usuarioId = req.params.id;
   try {
+     const alvo = await dbGet('SELECT email FROM usuarios WHERE id = ?', [usuarioId]);
+    if (alvo && alvo.email === 'admin@biomapet.com') {
+      return res.json({ ok: false, erro: 'nao_pode_excluir_admin' });
+    }
+
     await dbTransaction(async () => {
       const func = await dbGet('SELECT id FROM funcionarios WHERE usuario_id = ?', [usuarioId]);
       if (func) {
