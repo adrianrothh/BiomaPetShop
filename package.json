@@ -1,0 +1,31 @@
+{
+  "name": "biomapet",
+  "version": "1.0.0",
+  "description": "Sistema web de agendamento para pet shop",
+  "main": "app.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon --quiet app.js",
+    "init-db": "node database/init.js",
+    "test": "jest --verbose"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bootstrap": "^5.3.3",
+    "connect-sqlite3": "^0.9.15",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-rate-limit": "^8.3.2",
+    "express-session": "^1.18.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14"
+  }
+}

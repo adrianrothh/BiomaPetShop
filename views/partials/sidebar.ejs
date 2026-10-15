@@ -1,0 +1,60 @@
+<aside class="sidebar">
+  <a href="/dashboard" class="sidebar-brand" style="text-decoration:none;color:inherit;">
+    <svg class="sidebar-brand-icon" width="26" height="20" viewBox="0 0 130 100" fill="#10b981" xmlns="http://www.w3.org/2000/svg">
+      <!-- Patinha 1 (esquerda/baixo) -->
+      <ellipse cx="16" cy="38" rx="6" ry="8"/>
+      <ellipse cx="27" cy="32" rx="6" ry="8"/>
+      <ellipse cx="38" cy="32" rx="6" ry="8"/>
+      <ellipse cx="49" cy="38" rx="6" ry="8"/>
+      <path d="M32 48 C17 48 9 59 13 70 C16 79 24 85 32 85 C40 85 48 79 51 70 C55 59 47 48 32 48Z"/>
+      <!-- Patinha 2 (direita/cima) -->
+      <ellipse cx="80" cy="12" rx="5.5" ry="7.5"/>
+      <ellipse cx="91" cy="6" rx="5.5" ry="7.5"/>
+      <ellipse cx="102" cy="6" rx="5.5" ry="7.5"/>
+      <ellipse cx="113" cy="12" rx="5.5" ry="7.5"/>
+      <path d="M96 22 C82 22 74 33 78 43 C81 52 89 57 96 57 C103 57 111 52 114 43 C118 33 110 22 96 22Z"/>
+    </svg>
+    <span class="sidebar-brand-text">Bioma Pet</span>
+  </a>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Visão Geral</div>
+    <a href="/dashboard" class="nav-item <%= paginaAtiva === 'dashboard' ? 'active' : '' %>">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    <div class="sidebar-section-label">Gestão</div>
+    <a href="/clientes" class="nav-item <%= paginaAtiva === 'clientes' ? 'active' : '' %>">
+      <i class="bi bi-people-fill"></i> Clientes
+    </a>
+    <a href="/pets" class="nav-item <%= paginaAtiva === 'pets' ? 'active' : '' %>">
+      <i class="bi bi-heart-fill"></i> Pets
+    </a>
+    <a href="/servicos" class="nav-item <%= paginaAtiva === 'servicos' ? 'active' : '' %>">
+      <i class="bi bi-scissors"></i> Serviços
+    </a>
+    <a href="/agendamentos" class="nav-item <%= paginaAtiva === 'agendamentos' ? 'active' : '' %>">
+      <i class="bi bi-calendar2-week-fill"></i> Agendamentos
+    </a>
+    <% if (usuario && usuario.permissoes === 'administrador') { %>
+    <div class="sidebar-section-label">Administração</div>
+    <a href="/funcionarios" class="nav-item <%= paginaAtiva === 'funcionarios' ? 'active' : '' %>">
+      <i class="bi bi-person-badge-fill"></i> Funcionários
+    </a>
+    <% } %>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        <i class="bi bi-person-fill"></i>
+      </div>
+      <div class="sidebar-user-info">
+        <div class="user-name"><%= usuario.nome %></div>
+        <div class="user-role"><%= usuario.email %></div>
+      </div>
+    </div>
+    <a href="/logout" class="logout-btn">
+      <i class="bi bi-box-arrow-left"></i> Sair
+    </a>
+  </div>
+</aside>

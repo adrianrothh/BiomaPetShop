@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Bioma Pet</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+  <main class="main-content">
+
+    <div class="dash-header">
+      <div>
+        <div class="dash-greeting">Olá, <%= usuario.nome.split(' ')[0] %>!</div>
+        <div class="dash-subtitle">Aqui está o resumo do pet shop hoje.</div>
+      </div>
+      <div class="dash-date-badge">
+        <i class="bi bi-calendar3 me-1"></i>
+        <%= new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) %>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-people-fill"></i></div>
+        <div>
+          <div class="stat-value"><%= totalClientes %></div>
+          <div class="stat-label">Clientes cadastrados</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-heart-fill"></i></div>
+        <div>
+          <div class="stat-value"><%= totalPets %></div>
+          <div class="stat-label">Pets cadastrados</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange"><i class="bi bi-calendar2-check-fill"></i></div>
+        <div>
+          <div class="stat-value"><%= totalHoje %></div>
+          <div class="stat-label">Agendamentos hoje</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple"><i class="bi bi-scissors"></i></div>
+        <div>
+          <div class="stat-value"><%= totalServicos %></div>
+          <div class="stat-label">Serviços disponíveis</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col-grid">
+
+      <div class="dash-col">
+
+        <div class="section-card dash-card">
+          <div class="section-title">
+            <i class="bi bi-person-lines-fill"></i> Clientes Cadastrados
+          </div>
+          <% if (ultimosClientes.length === 0) { %>
+            <div class="empty-state" style="padding: 24px 0">
+              <i class="bi bi-people"></i>
+              Nenhum cliente cadastrado ainda.
+            </div>
+          <% } else { %>
+            <div class="scroll-list dash-list">
+              <% ultimosClientes.forEach(function(c) { %>
+                <div class="dash-list-item">
+                  <span class="nome-destaque"><%= c.nome %></span>
+                  <span class="dash-list-date">
+                    <%= new Date(c.criado_em.replace(' ', 'T') + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>
+                  </span>
+                </div>
+              <% }) %>
+            </div>
+            <div class="dash-card-footer">
+              <a href="/clientes" class="dash-link">Ver todos os clientes &rarr;</a>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="section-card dash-card">
+          <div class="section-title">
+            <i class="bi bi-heart-fill"></i> Pets Cadastrados
+          </div>
+          <% if (ultimosPets.length === 0) { %>
+            <div class="empty-state" style="padding: 24px 0">
+              <i class="bi bi-heart"></i>
+              Nenhum pet cadastrado ainda.
+            </div>
+          <% } else { %>
+            <div class="scroll-list dash-list">
+              <% ultimosPets.forEach(function(p) { %>
+                <div class="dash-list-item">
+                  <div class="dash-list-col">
+                    <span class="nome-destaque"><%= p.nome %></span>
+                    <span class="dash-list-meta">
+                      <%= p.especie %><% if (p.raca) { %> &bull; <%= p.raca %><% } %>
+                    </span>
+                  </div>
+                  <span class="dash-list-date"><%= p.cliente_nome || '—' %></span>
+                </div>
+              <% }) %>
+            </div>
+            <div class="dash-card-footer">
+              <a href="/pets" class="dash-link">Ver todos os pets &rarr;</a>
+            </div>
+          <% } %>
+        </div>
+
+      </div>
+
+      <div class="dash-col">
+
+        <div class="section-card dash-card">
+          <div class="section-title">
+            <i class="bi bi-calendar2-week-fill"></i> Agendamentos
+          </div>
+          <% if (agendamentos.length === 0) { %>
+            <div class="empty-state" style="padding: 24px 0">
+              <i class="bi bi-calendar2-x"></i>
+              Nenhum agendamento cadastrado ainda.
+            </div>
+          <% } else { %>
+            <div class="scroll-list dash-list">
+              <% agendamentos.forEach(function(a) { %>
+                <div class="dash-list-item">
+                  <div class="dash-list-col">
+                    <span class="nome-destaque"><%= a.pet_nome || '—' %></span>
+                    <span class="dash-list-meta"><%= a.servico_nome || '—' %></span>
+                    <span class="dash-list-meta">
+                      <%= new Date(a.data_hora.replace(' ', 'T')).toLocaleDateString('pt-BR') %>
+                      &bull;
+                      <%= new Date(a.data_hora.replace(' ', 'T')).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) %>
+                    </span>
+                  </div>
+                  <% if (a.status === 'confirmado') { %>
+                    <span class="badge-status badge-confirmado">Agendado</span>
+                  <% } else if (a.status === 'pendente') { %>
+                    <span class="badge-status badge-pendente">Pendente</span>
+                  <% } else if (a.status === 'concluido') { %>
+                    <span class="badge-status badge-concluido">Concluído</span>
+                  <% } else { %>
+                    <span class="badge-status badge-cancelado">Cancelado</span>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+            <div class="dash-card-footer">
+              <a href="/agendamentos" class="dash-link">Ver todos os agendamentos &rarr;</a>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="section-card dash-card">
+          <div class="section-title">
+            <i class="bi bi-person-badge-fill"></i> Funcionários
+          </div>
+          <% if (ultimosFuncionarios.length === 0) { %>
+            <div class="empty-state" style="padding: 24px 0">
+              <i class="bi bi-person-badge"></i>
+              Nenhum funcionário cadastrado ainda.
+            </div>
+          <% } else { %>
+            <div class="scroll-list dash-list">
+              <% ultimosFuncionarios.forEach(function(f) { %>
+                <div class="dash-list-item">
+                  <div class="dash-list-col">
+                    <span class="nome-destaque"><%= f.nome %></span>
+                    <span class="dash-list-meta"><%= f.email %></span>
+                  </div>
+                  <% if (f.ativo === 0) { %>
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:600;color:#6b7280;background:rgba(107,114,128,0.1);padding:2px 8px;border-radius:20px">
+                      <i class="bi bi-circle" style="font-size:0.45rem"></i> Inativo
+                    </span>
+                  <% } else { %>
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:600;color:#10b981;background:rgba(16,185,129,0.1);padding:2px 8px;border-radius:20px">
+                      <i class="bi bi-circle-fill" style="font-size:0.45rem"></i> Ativo
+                    </span>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+            <% if (usuario.permissoes === 'administrador') { %>
+              <div class="dash-card-footer">
+                <a href="/funcionarios" class="dash-link">Gerenciar funcionários &rarr;</a>
+              </div>
+            <% } %>
+          <% } %>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</body>
+</html>

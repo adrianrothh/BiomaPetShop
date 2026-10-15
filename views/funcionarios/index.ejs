@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funcionários - Bioma Pet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+  <main class="main-content">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title"><i class="bi bi-person-badge-fill"></i> Funcionários</div>
+        <div class="page-subtitle">Todos os usuários com acesso ao sistema</div>
+      </div>
+      <button class="btn-primary-action" data-bs-toggle="modal" data-bs-target="#modalNovoFuncionario">
+        <i class="bi bi-plus-lg"></i> Novo Funcionário
+      </button>
+    </div>
+
+    <div class="section-card">
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Buscar por nome ou e-mail..." id="busca">
+      </div>
+
+      <table class="table-agendamentos" id="tabela-funcionarios">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>E-mail de acesso</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (usuarios.length === 0) { %>
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <i class="bi bi-person-badge"></i>
+                  Nenhum funcionário cadastrado ainda.
+                </div>
+              </td>
+            </tr>
+          <% } else { %>
+            <% usuarios.forEach(function(u, i) { %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><strong><%= u.nome %></strong></td>
+                <td><%= u.telefone || '—' %></td>
+                <td><%= u.email %></td>
+                <td>
+                  <% if (u.permissoes === 'administrador') { %>
+                    <span class="badge-pill badge-pill-red">
+                      <i class="bi bi-shield-fill"></i> Administrador
+                    </span>
+                  <% } else { %>
+                    <span class="badge-pill badge-pill-green">
+                      <i class="bi bi-person-badge-fill"></i> Funcionário
+                    </span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (u.permissoes === 'administrador' || u.ativo || u.ativo === null) { %>
+                    <span class="badge-pill badge-pill-green">
+                      <i class="bi bi-circle-fill"></i> Ativo
+                    </span>
+                  <% } else { %>
+                    <span class="badge-pill badge-pill-gray">
+                      <i class="bi bi-circle"></i> Inativo
+                    </span>
+                  <% } %>
+                </td>
+                <td class="acoes">
+                  <% if (u.permissoes !== 'administrador') { %>
+                    <button class="btn-acao info" title="Ver agendamentos" onclick="verAgendamentos(<%= u.id %>, '<%= u.nome.replace(/'/g, "\\'") %>')"><i class="bi bi-info-circle-fill"></i></button>
+                  <% } %>
+                  <% if (u.email !== 'admin@biomapet.com') { %>
+                    <button class="btn-acao" title="Ver senha" style="background:rgba(250,204,21,0.08);color:#fbbf24;border:1px solid rgba(250,204,21,0.15)"
+                      onclick="verSenha('<%= u.nome.replace(/'/g, "\\'") %>', '<%= (u.senha_texto || '').replace(/'/g, "\\'") %>')">
+                      <i class="bi bi-eye-fill"></i>
+                    </button>
+                  <% } %>
+                  <% if (u.email !== 'admin@biomapet.com') { %>
+                    <button class="btn-acao editar" title="Editar" onclick="abrirEditar(<%= JSON.stringify({id: u.id, nome: u.nome, telefone: u.telefone || '', ativo: u.ativo}) %>)"><i class="bi bi-pencil-fill"></i></button>
+                    <button class="btn-acao excluir" title="Excluir" onclick="excluir(<%= u.id %>, '<%= u.nome.replace(/'/g, "\\'") %>')"><i class="bi bi-trash-fill"></i></button>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- Modal Novo Funcionário -->
+  <div class="modal fade" id="modalNovoFuncionario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i>Novo Funcionário</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="novo-erro" class="alert alert-danger d-none"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome <span class="text-danger">*</span></label>
+            <input type="text" id="novo-nome" class="form-control" placeholder="Nome completo">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" id="novo-telefone" class="form-control" placeholder="(00) 00000-0000">
+          </div>
+          <hr style="border-color:rgba(255,255,255,0.07);margin:18px 0 14px">
+          <div style="font-size:0.7rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">
+            <i class="bi bi-lock-fill"></i> Acesso ao sistema
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">E-mail <span class="text-danger">*</span></label>
+            <input type="text" id="novo-email" class="form-control" placeholder="email@exemplo.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Senha <span class="text-danger">*</span></label>
+            <input type="password" id="novo-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" onclick="cadastrarFuncionario()">Cadastrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar -->
+  <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-fill me-2"></i>Editar Funcionário</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="edit-erro" class="alert alert-danger d-none"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome <span class="text-danger">*</span></label>
+            <input type="text" id="edit-nome" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" id="edit-telefone" class="form-control" placeholder="(00) 00000-0000">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Status</label>
+            <select id="edit-ativo" class="form-select">
+              <option value="1">Ativo</option>
+              <option value="0">Inativo</option>
+            </select>
+          </div>
+          <hr style="border-color:rgba(255,255,255,0.07);margin:18px 0 14px">
+          <div style="font-size:0.7rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">
+            <i class="bi bi-lock-fill"></i> Alterar senha
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nova senha <span class="fw-normal" style="color:#adb5bd;font-size:0.78rem;text-transform:none">(deixe em branco para manter)</span></label>
+            <input type="password" id="edit-nova-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="salvarEdicao()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Senha -->
+  <div class="modal fade" id="modalSenha" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:380px">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-key-fill me-2"></i>Senha</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div style="font-size:0.78rem;color:#64748b;margin-bottom:6px" id="modal-senha-nome"></div>
+          <div style="font-family:monospace;font-size:1.05rem;font-weight:600;color:#f1f5f9;background:#080d14;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;word-break:break-all" id="modal-senha-valor"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agendamentos -->
+  <div class="modal fade" id="modalAgendamentos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-calendar2-week-fill me-2"></i>Agendamentos — <span id="modal-ag-nome"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body" id="modal-ag-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmação Exclusão -->
+  <div class="modal fade modal-danger" id="modalConfirmar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+      <div class="modal-content">
+        <div class="modal-body p-4">
+          <div class="modal-confirm-header">
+            <div class="modal-confirm-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <h5 style="margin:0;font-size:1rem;font-weight:700;color:#f1f5f9">Confirmar exclusão</h5>
+          </div>
+          <p id="modal-confirmar-msg" style="margin:0;font-size:0.875rem;color:#94a3b8;line-height:1.6"></p>
+        </div>
+        <div class="modal-footer border-0 pt-0 px-4 pb-4" style="gap:10px">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="flex:1">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmarExcluir" style="flex:1">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if (sucesso) { %>
+  <div id="toast-sucesso" class="toast-sucesso <%= sucesso === 'excluido' ? 'excluido' : '' %>">
+    <div class="toast-icon">
+      <i class="bi <%= sucesso === 'excluido' ? 'bi-trash-fill' : 'bi-check-circle-fill' %>"></i>
+    </div>
+    <span class="toast-text">
+      <%= sucesso === 'criado' ? 'Funcionário cadastrado com sucesso!' : sucesso === 'excluido' ? 'Funcionário excluído com sucesso!' : 'Funcionário atualizado com sucesso!' %>
+    </span>
+  </div>
+  <% } %>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let editandoId = null;
+    let _idExcluir = null;
+    let _modalConfirmar = null;
+
+    const toast = document.getElementById('toast-sucesso');
+    if (toast) setTimeout(() => {
+      toast.style.transition = 'opacity 0.4s';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 400);
+    }, 3000);
+
+    function mascaraTelefone(valor) {
+      const nums = valor.replace(/\D/g, '').slice(0, 11);
+      if (nums.length === 0) return '';
+      if (nums.length <= 2) return '(' + nums;
+      if (nums.length <= 7) return '(' + nums.slice(0,2) + ') ' + nums.slice(2);
+      return '(' + nums.slice(0,2) + ') ' + nums.slice(2,7) + '-' + nums.slice(7);
+    }
+
+    document.getElementById('novo-telefone').addEventListener('input', function() { this.value = mascaraTelefone(this.value); });
+    document.getElementById('edit-telefone').addEventListener('input', function() { this.value = mascaraTelefone(this.value); });
+
+    document.getElementById('busca').addEventListener('input', function() {
+      const termo = this.value.toLowerCase();
+      document.querySelectorAll('#tabela-funcionarios tbody tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(termo) ? '' : 'none';
+      });
+    });
+
+    document.getElementById('modalNovoFuncionario').addEventListener('show.bs.modal', () => {
+      ['novo-nome','novo-telefone','novo-email','novo-senha'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('novo-erro').classList.add('d-none');
+    });
+
+    function cadastrarFuncionario() {
+      const nome     = document.getElementById('novo-nome').value.trim();
+      const telefone = document.getElementById('novo-telefone').value.trim();
+      const email    = document.getElementById('novo-email').value.trim();
+      const senha    = document.getElementById('novo-senha').value;
+      const erroEl   = document.getElementById('novo-erro');
+      const telPattern = /^\(\d{2}\) \d{5}-\d{4}$/;
+
+      erroEl.classList.add('d-none');
+      if (!nome || !email || !senha || senha.length < 6 || (telefone && !telPattern.test(telefone))) {
+        erroEl.textContent = 'Preencha todos os campos corretamente.';
+        erroEl.classList.remove('d-none');
+        return;
+      }
+
+      fetch('/funcionarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone: telefone || null, email, senha })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          location.href = '/funcionarios?sucesso=criado';
+        } else {
+          erroEl.textContent = 'Preencha todos os campos corretamente.';
+          erroEl.classList.remove('d-none');
+        }
+      });
+    }
+
+    function abrirEditar(u) {
+      editandoId = u.id;
+      document.getElementById('edit-nome').value      = u.nome;
+      document.getElementById('edit-telefone').value  = mascaraTelefone(u.telefone || '');
+      document.getElementById('edit-ativo').value     = (u.ativo === 0) ? '0' : '1';
+      document.getElementById('edit-nova-senha').value = '';
+      document.getElementById('edit-erro').classList.add('d-none');
+      new bootstrap.Modal(document.getElementById('modalEditar')).show();
+    }
+
+    function salvarEdicao() {
+      const nome      = document.getElementById('edit-nome').value.trim();
+      const telefone  = document.getElementById('edit-telefone').value.trim();
+      const ativo     = document.getElementById('edit-ativo').value;
+      const novaSenha = document.getElementById('edit-nova-senha').value;
+      const erroEl    = document.getElementById('edit-erro');
+      const telPattern = /^\(\d{2}\) \d{5}-\d{4}$/;
+
+      erroEl.classList.add('d-none');
+      if (!nome || (telefone && !telPattern.test(telefone)) || (novaSenha && novaSenha.length < 6)) {
+        erroEl.textContent = 'Preencha todos os campos corretamente.';
+        erroEl.classList.remove('d-none');
+        return;
+      }
+
+      fetch('/funcionarios/' + editandoId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone: telefone || null, ativo: parseInt(ativo), nova_senha: novaSenha || null })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) location.href = '/funcionarios?sucesso=editado';
+        else { erroEl.textContent = 'Preencha todos os campos corretamente.'; erroEl.classList.remove('d-none'); }
+      });
+    }
+
+    function verSenha(nome, senha) {
+      document.getElementById('modal-senha-nome').textContent = nome;
+      document.getElementById('modal-senha-valor').textContent = senha || '(não disponível)';
+      new bootstrap.Modal(document.getElementById('modalSenha')).show();
+    }
+
+    function verAgendamentos(id, nome) {
+      document.getElementById('modal-ag-nome').textContent = nome;
+      document.getElementById('modal-ag-body').innerHTML = '<div class="text-center py-3" style="color:#4b5563">Carregando...</div>';
+      new bootstrap.Modal(document.getElementById('modalAgendamentos')).show();
+
+      fetch('/funcionarios/' + id + '/agendamentos')
+        .then(r => r.json())
+        .then(data => {
+          const ags = data.agendamentos || [];
+          if (ags.length === 0) {
+            document.getElementById('modal-ag-body').innerHTML =
+              '<div style="text-align:center;padding:24px 0;color:#4b5563;font-size:0.875rem"><i class="bi bi-calendar2-x" style="font-size:2rem;display:block;margin-bottom:10px"></i>Nenhum agendamento vinculado.</div>';
+            return;
+          }
+          const sLabel = { confirmado:'Agendado', concluido:'Concluído', cancelado:'Cancelado', pendente:'Pendente' };
+          const sClass = { confirmado:'badge-confirmado', concluido:'badge-concluido', cancelado:'badge-cancelado', pendente:'badge-pendente' };
+          let html = '<table class="table-agendamentos" style="margin:0"><thead><tr><th>Data / Hora</th><th>Cliente</th><th>Pet</th><th>Serviços</th><th>Status</th></tr></thead><tbody>';
+          ags.forEach(a => {
+            const dt   = new Date(a.data_hora);
+            const data = dt.toLocaleDateString('pt-BR');
+            const hora = dt.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+            html += `<tr><td><strong>${data}</strong><br><small class="table-time">${hora}</small></td>`
+              + `<td>${a.cliente_nome || '—'}</td><td>${a.pet_nome || '—'}</td>`
+              + `<td>${a.servicos_nomes || '—'}</td>`
+              + `<td><span class="badge-status ${sClass[a.status] || ''}">${sLabel[a.status] || a.status}</span></td></tr>`;
+          });
+          html += '</tbody></table>';
+          document.getElementById('modal-ag-body').innerHTML = html;
+        });
+    }
+
+    function excluir(id, nome) {
+      _idExcluir = id;
+      document.getElementById('modal-confirmar-msg').textContent =
+        `Deseja realmente excluir o funcionário "${nome}"? O acesso ao sistema será removido.`;
+      _modalConfirmar = new bootstrap.Modal(document.getElementById('modalConfirmar'));
+      _modalConfirmar.show();
+    }
+
+    document.getElementById('btnConfirmarExcluir').addEventListener('click', () => {
+      if (!_idExcluir) return;
+      fetch('/funcionarios/' + _idExcluir, { method: 'DELETE' }).then(() => {
+        _modalConfirmar.hide();
+        location.href = '/funcionarios?sucesso=excluido';
+      });
+    });
+  </script>
+
+</body>
+</html>

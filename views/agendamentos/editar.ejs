@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editar Agendamento - Bioma Pet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .form-card { max-width: 920px; }
+    .form-section { display:flex; align-items:center; gap:8px; font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid rgba(16,185,129,0.12); }
+    .form-divider { height:1px; background:rgba(255,255,255,0.05); margin:24px 0; }
+    .auto-input { background:rgba(16,185,129,0.04) !important; border-color:rgba(16,185,129,0.12) !important; color:#4b6a5a !important; cursor:default; }
+    .auto-input:focus { box-shadow:none !important; border-color:rgba(16,185,129,0.12) !important; }
+    .porte-wrap { height:38px; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.12); border-radius:8px; display:flex; align-items:center; padding:0 12px; gap:8px; }
+    .porte-dot { width:8px; height:8px; border-radius:50%; background:#374151; flex-shrink:0; }
+    .porte-text { font-size:0.855rem; color:#4b6a5a; }
+    .servico-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+    .servico-card { position:relative; background:#0d1421; border:1.5px solid rgba(255,255,255,0.07); border-radius:10px; padding:14px 14px 14px 44px; cursor:pointer; transition:border-color 0.18s, background 0.18s; user-select:none; }
+    .servico-card:hover { border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.03); }
+    .servico-card.selecionado { border-color:#10b981; background:rgba(16,185,129,0.07); }
+    .servico-card input[type="checkbox"] { position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; accent-color:#10b981; cursor:pointer; }
+    .servico-card-nome { font-size:0.84rem; font-weight:600; color:#e2e8f0; margin-bottom:4px; }
+    .servico-card-preco { font-size:0.78rem; color:#10b981; font-weight:600; }
+    .servico-card-preco.sem-porte { color:#4b5563; font-style:italic; }
+    .resumo-box { background:#0d1421; border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:20px; }
+    .resumo-vazio { color:#374151; font-size:0.82rem; text-align:center; padding:12px 0; }
+    .resumo-item { display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:#94a3b8; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .resumo-subtotal { display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; padding:8px 0 4px; }
+    .resumo-desconto { display:flex; justify-content:space-between; font-size:0.82rem; color:#10b981; padding:4px 0; }
+    .resumo-total { display:flex; justify-content:space-between; align-items:center; font-size:1rem; font-weight:700; color:#f1f5f9; padding-top:10px; margin-top:4px; border-top:1px solid rgba(255,255,255,0.08); }
+    .badge-desconto { font-size:0.65rem; background:rgba(16,185,129,0.12); color:#10b981; padding:2px 7px; border-radius:20px; font-weight:600; }
+    .required-star { color:#ef4444; margin-left:2px; }
+    .optional-label { color:#374151; font-weight:400; text-transform:none; letter-spacing:0; font-size:0.72rem; margin-left:4px; }
+    .form-actions { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:28px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); }
+    input[type="date"], input[type="time"] { color-scheme:dark; }
+    .form-select option { background:#080d14; color:#e2e8f0; }
+    textarea.form-control { resize:vertical; min-height:76px; }
+    textarea.form-control::placeholder { color:#1e2d42; }
+    .toast-aviso { position:fixed; bottom:28px; right:28px; display:flex; align-items:center; gap:12px; background:#1a0f0f; border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:14px 18px; box-shadow:0 8px 32px rgba(0,0,0,0.5); z-index:9999; min-width:280px; max-width:360px; opacity:0; transform:translateY(16px); transition:opacity 0.25s ease, transform 0.25s ease; pointer-events:none; }
+    .toast-aviso.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+    .toast-aviso-icon { width:36px; height:36px; border-radius:8px; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .toast-aviso-icon i { color:#f87171; font-size:1rem; }
+    .toast-aviso-title { font-size:0.82rem; font-weight:600; color:#f1f5f9; margin-bottom:2px; }
+    .toast-aviso-msg { font-size:0.76rem; color:#6b7280; line-height:1.4; }
+  </style>
+</head>
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+  <main class="main-content">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title"><i class="bi bi-pencil-square"></i> Editar Agendamento</div>
+        <div class="page-subtitle">Altere os dados do agendamento</div>
+      </div>
+      <a href="/agendamentos" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
+    </div>
+
+    <div class="section-card form-card">
+
+      <% if (erro) { %>
+        <div class="alert alert-danger mb-4"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= erro %></div>
+      <% } %>
+
+      <form action="/agendamentos/<%= agendamento.id %>/editar" method="POST" id="form-agendamento" novalidate>
+
+        <!-- ── PET ── -->
+        <div class="form-section"><i class="bi bi-heart-fill"></i> Pet</div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">Pet cadastrado <span class="required-star">*</span></label>
+            <select class="form-select" id="pet_id" name="pet_id" required onchange="onPetChange()">
+              <option value="">Selecione o pet...</option>
+              <% pets.forEach(function(p) { %>
+                <option value="<%= p.id %>"
+                  data-tutor="<%= p.cliente_nome || '' %>"
+                  data-porte="<%= p.porte || '' %>"
+                  <%= agendamento.pet_id == p.id ? 'selected' : '' %>>
+                  <%= p.nome %> — <%= p.especie %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Tutor responsável</label>
+            <input type="text" class="form-control auto-input" id="tutor_display" placeholder="—" readonly tabindex="-1">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Porte</label>
+            <div class="porte-wrap">
+              <span class="porte-dot" id="porte_dot"></span>
+              <span class="porte-text" id="porte_text">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SERVIÇOS ── -->
+        <div class="form-section"><i class="bi bi-scissors"></i> Serviços <span style="color:#374151; font-weight:400; text-transform:none; letter-spacing:0; font-size:0.75rem; margin-left:6px">(selecione um ou mais)</span></div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-lg-7">
+            <div class="servico-grid">
+              <% servicos.forEach(function(s) { %>
+                <% const selecionado = servicosSelecionadosIds.includes(s.id); %>
+                <label class="servico-card <%= selecionado ? 'selecionado' : '' %>" id="card-<%= s.id %>">
+                  <input type="checkbox" name="servicos" value="<%= s.id %>"
+                    id="chk-<%= s.id %>"
+                    data-nome="<%= s.nome %>"
+                    data-pequeno="<%= s.preco_pequeno %>"
+                    data-medio="<%= s.preco_medio %>"
+                    data-grande="<%= s.preco_grande %>"
+                    <%= selecionado ? 'checked' : '' %>
+                    onchange="onServicoChange(this)">
+                  <div class="servico-card-nome"><%= s.nome %></div>
+                  <div class="servico-card-preco sem-porte" id="preco-<%= s.id %>">—</div>
+                </label>
+              <% }) %>
+            </div>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="resumo-box">
+              <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px;">
+                <i class="bi bi-receipt"></i> Resumo
+              </div>
+              <div id="resumo-vazio" class="resumo-vazio" style="display:none">Nenhum serviço selecionado</div>
+              <div id="resumo-itens"></div>
+              <div id="resumo-totais" style="display:none">
+                <div class="resumo-subtotal"><span>Subtotal</span><span id="resumo-subtotal-val"></span></div>
+                <div class="resumo-desconto" id="resumo-desconto-linha" style="display:none">
+                  <span>Desconto combinação <span class="badge-desconto">10%</span></span>
+                  <span id="resumo-desconto-val"></span>
+                </div>
+                <div class="resumo-total"><span>Total</span><span id="resumo-total-val" style="color:#10b981"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <!-- ── DATA, HORA E STATUS ── -->
+        <div class="form-section"><i class="bi bi-calendar2-week-fill"></i> Data e Hora</div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">Data <span class="required-star">*</span></label>
+            <input type="date" class="form-control" id="data" name="data" value="<%= data %>" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Horário <span class="required-star">*</span></label>
+            <input type="time" class="form-control" id="hora" name="hora" value="<%= hora %>" min="08:00" max="18:00" step="1800" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Status <span class="required-star">*</span></label>
+            <select class="form-select" name="status" required>
+              <option value="confirmado" <%= agendamento.status === 'confirmado' ? 'selected' : '' %>>Agendado</option>
+              <option value="concluido"  <%= agendamento.status === 'concluido'  ? 'selected' : '' %>>Concluído</option>
+              <option value="cancelado"  <%= agendamento.status === 'cancelado'  ? 'selected' : '' %>>Cancelado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── FUNCIONÁRIO ── -->
+        <% if (funcionarios && funcionarios.length > 0) { %>
+        <div class="form-divider"></div>
+        <div class="form-section"><i class="bi bi-person-badge-fill"></i> Funcionário <span class="optional-label">(opcional)</span></div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-5">
+            <label class="form-label">Preferência de funcionário</label>
+            <select class="form-select" name="funcionario_id">
+              <option value="">Qualquer funcionário</option>
+              <% funcionarios.forEach(function(f) { %>
+                <option value="<%= f.id %>" <%= agendamento.funcionario_id == f.id ? 'selected' : '' %>><%= f.nome %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- ── OBSERVAÇÕES ── -->
+        <div class="mb-2">
+          <label class="form-label">Observações <span class="optional-label">(opcional)</span></label>
+          <textarea class="form-control" name="observacoes" rows="3"
+            placeholder="Ex: pet agitado, alergia a produtos..."><%= agendamento.observacoes || '' %></textarea>
+        </div>
+
+        <div class="form-actions">
+          <a href="/agendamentos" class="btn btn-secondary px-4">Cancelar</a>
+          <button type="submit" class="btn-primary-action"><i class="bi bi-check-lg"></i> Salvar Alterações</button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <div class="toast-aviso" id="toast-aviso">
+    <div class="toast-aviso-icon"><i class="bi bi-clock-fill"></i></div>
+    <div>
+      <div class="toast-aviso-title">Horário inválido</div>
+      <div class="toast-aviso-msg">O atendimento funciona das 08:00 às 18:00.</div>
+    </div>
+  </div>
+
+  <script>
+    const hoje = new Date().toISOString().split('T')[0];
+    let porteAtual = '';
+
+    function fmt(val) { return 'R$ ' + val.toFixed(2).replace('.', ','); }
+
+    function onPetChange() {
+      const sel = document.getElementById('pet_id');
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt || !opt.value) {
+        document.getElementById('tutor_display').value = '';
+        document.getElementById('porte_text').textContent = '—';
+        document.getElementById('porte_dot').style.background = '#374151';
+        porteAtual = '';
+      } else {
+        document.getElementById('tutor_display').value = opt.dataset.tutor || '—';
+        porteAtual = opt.dataset.porte || '';
+        const cores = { 'Pequeno': '#22c55e', 'Médio': '#f59e0b', 'Grande': '#ef4444' };
+        document.getElementById('porte_text').textContent = porteAtual || '—';
+        document.getElementById('porte_dot').style.background = cores[porteAtual] || '#374151';
+      }
+      atualizarPrecos();
+      atualizarResumo();
+    }
+
+    function atualizarPrecos() {
+      document.querySelectorAll('[id^="preco-"]').forEach(el => {
+        const id = el.id.replace('preco-', '');
+        const chk = document.getElementById('chk-' + id);
+        if (porteAtual) {
+          const campos = { 'Pequeno': 'pequeno', 'Médio': 'medio', 'Grande': 'grande' };
+          const preco = parseFloat(chk.dataset[campos[porteAtual] || 'medio']) || 0;
+          el.textContent = fmt(preco);
+          el.classList.remove('sem-porte');
+        } else {
+          el.textContent = '—';
+          el.classList.add('sem-porte');
+        }
+      });
+    }
+
+    function atualizarResumo() {
+      const checkboxes = document.querySelectorAll('input[name="servicos"]:checked');
+      const campos = { 'Pequeno': 'pequeno', 'Médio': 'medio', 'Grande': 'grande' };
+      const campoPreco = campos[porteAtual] || 'medio';
+
+      document.querySelectorAll('.servico-card').forEach(card => {
+        const chk = card.querySelector('input[type="checkbox"]');
+        card.classList.toggle('selecionado', chk.checked);
+      });
+
+      const itensEl = document.getElementById('resumo-itens');
+      const totaisEl = document.getElementById('resumo-totais');
+      const vazioEl = document.getElementById('resumo-vazio');
+
+      if (checkboxes.length === 0) {
+        vazioEl.style.display = '';
+        itensEl.innerHTML = '';
+        totaisEl.style.display = 'none';
+        return;
+      }
+
+      vazioEl.style.display = 'none';
+      totaisEl.style.display = '';
+
+      let subtotal = 0;
+      let html = '';
+      checkboxes.forEach(chk => {
+        const preco = parseFloat(chk.dataset[campoPreco]) || 0;
+        subtotal += preco;
+        html += `<div class="resumo-item"><span>${chk.dataset.nome}</span><span>${fmt(preco)}</span></div>`;
+      });
+      itensEl.innerHTML = html;
+
+      const total = Math.round(subtotal * 100) / 100;
+
+      document.getElementById('resumo-subtotal-val').textContent = fmt(subtotal);
+      document.getElementById('resumo-desconto-linha').style.display = 'none';
+      document.getElementById('resumo-total-val').textContent = fmt(total);
+    }
+
+    function getChkByNome(nome) {
+      return [...document.querySelectorAll('input[name="servicos"]')]
+        .find(c => c.dataset.nome.toLowerCase().trim() === nome);
+    }
+
+    function onServicoChange(chk) {
+      const nome = chk.dataset.nome.toLowerCase().trim();
+      const banhoChk = getChkByNome('banho');
+
+      if (chk.checked && (nome === 'tosa' || nome === 'hidratação')) {
+        if (!banhoChk || !banhoChk.checked) {
+          chk.checked = false;
+          mostrarAviso(
+            nome === 'tosa' ? 'Tosa requer Banho' : 'Hidratação requer Banho',
+            nome === 'tosa'
+              ? 'Para agendar Tosa, o serviço de Banho deve ser selecionado.'
+              : 'Para agendar Hidratação, o serviço de Banho deve ser selecionado.'
+          );
+          atualizarResumo();
+          return;
+        }
+      }
+
+      if (!chk.checked && nome === 'banho') {
+        const tosaChk = getChkByNome('tosa');
+        const hidChk  = getChkByNome('hidratação');
+        const removidos = [];
+        if (tosaChk && tosaChk.checked) { tosaChk.checked = false; removidos.push('Tosa'); }
+        if (hidChk  && hidChk.checked)  { hidChk.checked  = false; removidos.push('Hidratação'); }
+        if (removidos.length > 0) {
+          mostrarAviso('Serviços removidos', removidos.join(' e ') + ' requer(em) Banho e foram desmarcados.');
+        }
+      }
+
+      atualizarResumo();
+    }
+
+    let toastTimer;
+    function mostrarAviso(titulo, msg) {
+      const t = document.getElementById('toast-aviso');
+      document.querySelector('.toast-aviso-title').textContent = titulo || 'Horário inválido';
+      document.querySelector('.toast-aviso-msg').textContent   = msg   || 'O atendimento funciona das 08:00 às 18:00.';
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    document.getElementById('hora').addEventListener('change', function() {
+      const h = parseInt(this.value.split(':')[0]);
+      if (this.value && (h < 8 || h >= 18)) { this.value = ''; mostrarAviso('Horário inválido', 'O atendimento funciona das 08:00 às 18:00.'); }
+    });
+
+    document.getElementById('data').addEventListener('blur', function() {
+      if (this.value && this.value < hoje) {
+        this.value = '';
+        mostrarAviso('Data inválida', 'Não é possível agendar em uma data que já passou.');
+      }
+    });
+
+    document.getElementById('form-agendamento').addEventListener('submit', function(e) {
+      const petId = document.getElementById('pet_id').value;
+      const data  = document.getElementById('data').value;
+      const hora  = document.getElementById('hora').value;
+      const servicos = document.querySelectorAll('input[name="servicos"]:checked');
+
+      if (!petId) {
+        e.preventDefault();
+        mostrarAviso('Pet não selecionado', 'Selecione um pet cadastrado para continuar.');
+        return;
+      }
+      if (servicos.length === 0) {
+        e.preventDefault();
+        mostrarAviso('Nenhum serviço selecionado', 'Selecione ao menos um serviço para continuar.');
+        return;
+      }
+      if (!data) {
+        e.preventDefault();
+        mostrarAviso('Data não informada', 'Informe a data do agendamento.');
+        return;
+      }
+      if (!hora) {
+        e.preventDefault();
+        mostrarAviso('Horário não informado', 'Informe o horário do agendamento.');
+        return;
+      }
+
+      const h = parseInt(hora.split(':')[0]);
+      if (h < 8 || h >= 18) {
+        e.preventDefault();
+        document.getElementById('hora').value = '';
+        mostrarAviso('Horário inválido', 'O atendimento funciona das 08:00 às 18:00.');
+        return;
+      }
+
+      const nomesSel = [...servicos].map(c => c.dataset.nome.toLowerCase().trim());
+      const temBanho = nomesSel.includes('banho');
+      if ((nomesSel.includes('tosa') || nomesSel.includes('hidratação')) && !temBanho) {
+        e.preventDefault();
+        mostrarAviso('Combinação inválida', 'Tosa e Hidratação só podem ser agendados junto com Banho.');
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', function() {
+      onPetChange();
+      atualizarResumo();
+    });
+  </script>
+
+</body>
+</html>
