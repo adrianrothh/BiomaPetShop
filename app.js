@@ -5,7 +5,7 @@ const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const { dbGet, dbAll, dbRun } = require('./database/db-promise');
-require('./database/init');
+const bancoPronto = require('./database/init');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
 const clientesRoutes = require('./routes/clientes.routes');
@@ -154,8 +154,13 @@ app.get('/dashboard', verificarAutenticacao, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
-
-
+bancoPronto
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Erro ao inicializar o banco:', err);
+    process.exit(1);
+  });
