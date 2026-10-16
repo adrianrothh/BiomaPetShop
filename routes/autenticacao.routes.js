@@ -2,8 +2,41 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { dbGet, dbRun } = require('../database/db-promise');
+const { rateLimit } = require('express-rate-limit');
 
 const router = express.Router();
+
+const MINUTOS_BLOQUEIO = Number(process.env.RATE_LIMIT_MINUTOS) || 15;
+
+const limiteLogin = rateLimit({
+  windowMs: MINUTOS_BLOQUEIO * 60 * 1000,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).render('autenticacao/login', {
+      title: 'Login - Bioma Pet',
+      erro: `Muitas tentativas de login. Aguarde ${MINUTOS_BLOQUEIO} minutos e tente novamente.`,
+      sucesso: null,
+      cadastrado: false
+    });
+  }
+});
+
+const limiteEsqueciSenha = rateLimit({
+  windowMs: MINUTOS_BLOQUEIO * 60 * 1000,
+  limit: 3,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).render('autenticacao/esqueci-senha', {
+      title: 'Esqueci minha senha',
+      erro: `Muitas solicitações. Aguarde ${MINUTOS_BLOQUEIO} minutos e tente novamente.`,
+      sucesso: null
+    });
+  }
+});
 
 router.get('/login', (req, res) => {
   if (req.session.usuario) return res.redirect('/dashboard');
@@ -15,7 +48,7 @@ router.get('/login', (req, res) => {
   });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', limiteLogin, async (req, res) => {
   const { email, senha } = req.body;
 
   if (!email || !senha) {
@@ -31,7 +64,7 @@ router.post('/login', async (req, res) => {
     const usuario = await dbGet('SELECT * FROM usuarios WHERE email = ?', [email]);
 
     if (!usuario) {
-      return res.render('autenticacao/login', {
+      return res.status(401).render('autenticacao/login', {
         title: 'Login - Bioma Pet',
         erro: 'Email ou senha inválidos.',
         sucesso: null,
@@ -42,7 +75,7 @@ router.post('/login', async (req, res) => {
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-      return res.render('autenticacao/login', {
+      return res.status(401).render('autenticacao/login', {
         title: 'Login - Bioma Pet',
         erro: 'Email ou senha inválidos.',
         sucesso: null,
@@ -94,7 +127,7 @@ router.get('/esqueci-senha', (req, res) => {
   });
 });
 
-router.post('/esqueci-senha', async (req, res) => {
+router.post('/esqueci-senha', limiteEsqueciSenha, async (req, res) => {
   const { email } = req.body;
 
   const renderView = (erro, sucesso) =>
@@ -202,5 +235,6 @@ router.post('/redefinir-senha/:token', async (req, res) => {
 
 router.get('/cadastro', (req, res) => res.redirect('/login'));
 router.post('/cadastro', (req, res) => res.redirect('/login'));
+
 
 module.exports = router;
