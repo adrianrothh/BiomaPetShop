@@ -1,9 +1,30 @@
-function verificarAutenticacao(req, res, next) {
-  if (req.session.usuario) {
-    return next();
+const { dbGet } = require('../database/db-promise');
+
+async function verificarAutenticacao(req, res, next) {
+  if (!req.session.usuario) {
+    return res.redirect('/login');
   }
 
-  return res.redirect('/login');
+  try {
+    // Confere no banco se o usuário ainda existe e está ativo
+    const usuario = await dbGet(
+      `SELECT u.id, u.permissoes, f.ativo
+       FROM usuarios u
+       LEFT JOIN funcionarios f ON f.usuario_id = u.id
+       WHERE u.id = ?`,
+      [req.session.usuario.id]
+    );
+
+    if (!usuario || usuario.ativo === 0) {
+      return req.session.destroy(() => res.redirect('/login'));
+    }
+
+    // Mantém o perfil da sessão igual ao do banco
+    req.session.usuario.permissoes = usuario.permissoes;
+    next();
+  } catch (err) {
+    next(err);
+  }
 }
 
 function verificarAdmin(req, res, next) {
