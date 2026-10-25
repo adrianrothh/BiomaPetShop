@@ -143,12 +143,12 @@ async function inicializarBanco() {
   // 5. Usuário admin inicial
   const admin = await dbGet('SELECT id FROM usuarios WHERE email = ?', ['admin@biomapet.com']);
   if (!admin) {
-    const senhaInicial = process.env.ADMIN_SENHA_INICIAL;
+    const senhaInicial = process.env.ADMIN_INITIAL_PASSWORD;
     if (!senhaInicial && process.env.NODE_ENV === 'production') {
-      throw new Error('ADMIN_SENHA_INICIAL não definida. Defina a senha inicial do admin no ambiente.');
+      throw new Error('ADMIN_INITIAL_PASSWORD não definida. Defina a senha inicial do admin no ambiente.');
     }
     if (!senhaInicial) {
-      console.warn('ADMIN_SENHA_INICIAL não definida: admin criado com a senha padrão 123456 (só para desenvolvimento).');
+      console.warn('ADMIN_INITIAL_PASSWORD não definida: admin criado com a senha padrão 123456 (só para desenvolvimento).');
     }
     const senhaHash = await bcrypt.hash(senhaInicial || '123456', 10);
     await dbRun(
