@@ -4,7 +4,7 @@ const {
   emailPattern,
   normalizarServicos,
   calcularValores,
-  validarDependenciasServicos
+  servicoSemPreRequisito
 } = require('../utils/helpers');
 
 // capitalize
@@ -97,27 +97,41 @@ test('desconto é sempre zero', () => {
   expect(calcularValores(servicosTeste, { porte: 'Pequeno' }).desconto).toBe(0);
 });
 
-// validarDependenciasServicos
-test('tosa sem banho deve retornar false', () => {
-  expect(validarDependenciasServicos(['tosa'])).toBe(false);
+// servicoSemPreRequisito (RN04)
+const banho = { id: 1, nome: 'Banho', pre_requisito_id: null };
+const tosa = { id: 2, nome: 'Tosa', pre_requisito_id: 1 };
+const hidratacao = { id: 3, nome: 'Hidratação', pre_requisito_id: 1 };
+const unhas = { id: 5, nome: 'Corte de Unhas', pre_requisito_id: null };
+
+test('tosa sem banho é barrada', () => {
+  expect(servicoSemPreRequisito([tosa])).toBe(tosa);
 });
 
-test('hidratação sem banho deve retornar false', () => {
-  expect(validarDependenciasServicos(['hidratação'])).toBe(false);
+test('hidratação sem banho é barrada', () => {
+  expect(servicoSemPreRequisito([hidratacao, unhas])).toBe(hidratacao);
 });
 
-test('tosa com banho deve retornar true', () => {
-  expect(validarDependenciasServicos(['tosa', 'banho'])).toBe(true);
+test('tosa com banho é permitida', () => {
+  expect(servicoSemPreRequisito([tosa, banho])).toBeNull();
 });
 
-test('hidratação com banho deve retornar true', () => {
-  expect(validarDependenciasServicos(['hidratação', 'banho'])).toBe(true);
+test('hidratação com banho é permitida', () => {
+  expect(servicoSemPreRequisito([banho, hidratacao])).toBeNull();
 });
 
-test('banho sozinho deve retornar true', () => {
-  expect(validarDependenciasServicos(['banho'])).toBe(true);
+test('serviço sem pré-requisito é permitido sozinho', () => {
+  expect(servicoSemPreRequisito([unhas])).toBeNull();
 });
 
-test('lista vazia deve retornar true', () => {
-  expect(validarDependenciasServicos([])).toBe(true);
+test('a regra não depende do nome do serviço', () => {
+  const tosaRenomeada = { ...tosa, nome: 'Tosa Higiênica' };
+  expect(servicoSemPreRequisito([tosaRenomeada])).toBe(tosaRenomeada);
+});
+
+test('ids vindos do formulário como texto também funcionam', () => {
+  expect(servicoSemPreRequisito([{ ...tosa, id: '2', pre_requisito_id: '1' }, { ...banho, id: '1' }])).toBeNull();
+});
+
+test('lista vazia é permitida', () => {
+  expect(servicoSemPreRequisito([])).toBeNull();
 });

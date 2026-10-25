@@ -1,7 +1,7 @@
+require('dotenv').config();
 const bcrypt = require('bcrypt');
 const db = require('./db');
 const { dbGet, dbAll, dbRun } = require('./db-promise');
-require('dotenv').config();
 
 // Adiciona a coluna só se ela ainda não existir. Serve para atualizar bancos
 // criados por versões antigas do sistema, sem esconder erros reais.
@@ -9,7 +9,9 @@ async function adicionarColunaSeFaltar(tabela, coluna, tipo) {
   const colunas = await dbAll(`PRAGMA table_info(${tabela})`);
   if (!colunas.some(c => c.name === coluna)) {
     await dbRun(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${tipo}`);
+    return true;
   }
+  return false;
 }
 
 async function inicializarBanco() {
@@ -56,7 +58,8 @@ async function inicializarBanco() {
       duracao_min INTEGER DEFAULT 60,
       preco_pequeno REAL DEFAULT 0,
       preco_medio REAL DEFAULT 0,
-      preco_grande REAL DEFAULT 0
+      preco_grande REAL DEFAULT 0,
+      pre_requisito_id INTEGER REFERENCES servicos(id)
     )
   `);
 
@@ -120,12 +123,13 @@ async function inicializarBanco() {
   await adicionarColunaSeFaltar('funcionarios', 'cpf', 'TEXT');
   await adicionarColunaSeFaltar('funcionarios', 'email', 'TEXT');
   await adicionarColunaSeFaltar('funcionarios', 'usuario_id', 'INTEGER');
+  const colunaPreRequisitoNova = await adicionarColunaSeFaltar('servicos', 'pre_requisito_id', 'INTEGER');
 
   // 4. Serviços padrão
   const servicosPadrao = [
     { nome: 'Banho', duracao_min: 60, preco_pequeno: 30, preco_medio: 45, preco_grande: 60 },
-    { nome: 'Tosa', duracao_min: 90, preco_pequeno: 40, preco_medio: 55, preco_grande: 70 },
-    { nome: 'Hidratação', duracao_min: 45, preco_pequeno: 25, preco_medio: 35, preco_grande: 50 },
+    { nome: 'Tosa', duracao_min: 90, preco_pequeno: 40, preco_medio: 55, preco_grande: 70, pre_requisito: 'Banho' },
+    { nome: 'Hidratação', duracao_min: 45, preco_pequeno: 25, preco_medio: 35, preco_grande: 50, pre_requisito: 'Banho' },
     { nome: 'Consulta Básica', duracao_min: 30, preco_pequeno: 50, preco_medio: 50, preco_grande: 50 },
     { nome: 'Corte de Unhas', duracao_min: 20, preco_pequeno: 15, preco_medio: 20, preco_grande: 25 },
   ];
@@ -133,9 +137,24 @@ async function inicializarBanco() {
   for (const s of servicosPadrao) {
     const existe = await dbGet('SELECT id FROM servicos WHERE nome = ?', [s.nome]);
     if (!existe) {
+      const pre = s.pre_requisito
+        ? await dbGet('SELECT id FROM servicos WHERE nome = ?', [s.pre_requisito])
+        : null;
       await dbRun(
-        'INSERT INTO servicos (nome, duracao_min, preco_pequeno, preco_medio, preco_grande) VALUES (?, ?, ?, ?, ?)',
-        [s.nome, s.duracao_min, s.preco_pequeno, s.preco_medio, s.preco_grande]
+        'INSERT INTO servicos (nome, duracao_min, preco_pequeno, preco_medio, preco_grande, pre_requisito_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [s.nome, s.duracao_min, s.preco_pequeno, s.preco_medio, s.preco_grande, pre ? pre.id : null]
+      );
+    }
+  }
+
+  // Bancos antigos: na primeira vez que a coluna é criada, aplica a RN04 que
+  // antes estava fixa no código (Tosa e Hidratação exigem Banho).
+  if (colunaPreRequisitoNova) {
+    const banho = await dbGet('SELECT id FROM servicos WHERE nome = ?', ['Banho']);
+    if (banho) {
+      await dbRun(
+        "UPDATE servicos SET pre_requisito_id = ? WHERE nome IN ('Tosa', 'Hidratação')",
+        [banho.id]
       );
     }
   }
