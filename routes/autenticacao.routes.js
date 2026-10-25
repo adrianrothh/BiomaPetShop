@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { dbGet, dbRun } = require('../database/db-promise');
+const { verificarAutenticacao } = require('../middlewares/autenticacao');
 const { rateLimit } = require('express-rate-limit');
 
 const router = express.Router();
@@ -100,7 +101,7 @@ router.post('/login', limiteLogin, async (req, res) => {
       permissoes: usuario.permissoes
     };
 
-    res.redirect('/dashboard');
+    res.redirect(usuario.deve_trocar_senha ? '/trocar-senha' : '/dashboard');
   } catch (err) {
     console.error('Erro no login:', err);
     res.render('autenticacao/login', {
@@ -231,6 +232,49 @@ router.post('/redefinir-senha/:token', async (req, res) => {
   } catch (err) {
     console.error('Erro ao redefinir senha:', err);
     return renderView('Erro interno. Tente novamente.', null);
+  }
+});
+
+// Troca de senha obrigatória (BL-09): usada quando usuarios.deve_trocar_senha = 1
+router.get('/trocar-senha', verificarAutenticacao, (req, res) => {
+  res.render('autenticacao/trocar-senha', {
+    title: 'Trocar senha - Bioma Pet',
+    erro: null,
+    sucesso: null
+  });
+});
+
+router.post('/trocar-senha', verificarAutenticacao, async (req, res) => {
+  const { nova_senha, confirmar_senha } = req.body;
+
+  const renderView = (status, erro, sucesso) =>
+    res.status(status).render('autenticacao/trocar-senha', {
+      title: 'Trocar senha - Bioma Pet',
+      erro, sucesso
+    });
+
+  if (!nova_senha || nova_senha.length < 6) {
+    return renderView(400, 'A senha deve ter no mínimo 6 caracteres.', null);
+  }
+  if (nova_senha !== confirmar_senha) {
+    return renderView(400, 'As senhas não conferem.', null);
+  }
+
+  try {
+    const usuario = await dbGet('SELECT senha FROM usuarios WHERE id = ?', [req.session.usuario.id]);
+    if (await bcrypt.compare(nova_senha, usuario.senha)) {
+      return renderView(400, 'A nova senha deve ser diferente da atual.', null);
+    }
+
+    const hash = await bcrypt.hash(nova_senha, 10);
+    await dbRun(
+      'UPDATE usuarios SET senha = ?, senha_texto = NULL, deve_trocar_senha = 0 WHERE id = ?',
+      [hash, req.session.usuario.id]
+    );
+    return renderView(200, null, 'Senha alterada com sucesso!');
+  } catch (err) {
+    console.error('Erro ao trocar senha:', err);
+    return renderView(500, 'Erro interno. Tente novamente.', null);
   }
 });
 
