@@ -155,8 +155,9 @@ router.post('/esqueci-senha', limiteEsqueciSenha, async (req, res) => {
     console.error('Erro ao gerar reset de senha:', err);
   }
 
-  // Sempre retorna sucesso porque não envia realmente o e-mail
-  return renderView(null, 'E-mail enviado! Verifique sua caixa de entrada.');
+  // O envio de e-mail ainda não existe (DT-10). A mensagem é a mesma para e-mail
+  // cadastrado ou não, para não revelar quais e-mails existem no sistema.
+  return renderView(null, 'Solicitação registrada. A recuperação por e-mail ainda não está disponível: peça ao administrador para redefinir sua senha.');
 });
 
 router.get('/redefinir-senha/:token', async (req, res) => {
