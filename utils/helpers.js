@@ -19,11 +19,13 @@ function calcularValores(servicosSelecionados, pet) {
   return { subtotal, desconto: 0, valorFinal: Math.round(subtotal * 100) / 100, campoPreco };
 }
 
-function validarDependenciasServicos(nomes) {
-  if ((nomes.includes('tosa') || nomes.includes('hidratação')) && !nomes.includes('banho')) {
-    return false;
-  }
-  return true;
+// RN04: retorna o primeiro serviço selecionado cujo pré-requisito não foi
+// selecionado junto, ou null se todos os pré-requisitos estiverem presentes.
+function servicoSemPreRequisito(servicosSelecionados) {
+  const ids = servicosSelecionados.map(s => Number(s.id));
+  return servicosSelecionados.find(
+    s => s.pre_requisito_id && !ids.includes(Number(s.pre_requisito_id))
+  ) || null;
 }
 
-module.exports = { capitalize, telPattern, emailPattern, normalizarServicos, calcularValores, validarDependenciasServicos };
+module.exports = { capitalize, telPattern, emailPattern, normalizarServicos, calcularValores, servicoSemPreRequisito };
