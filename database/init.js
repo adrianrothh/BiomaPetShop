@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const db = require('./db');
 const { dbGet, dbAll, dbRun } = require('./db-promise');
+require('dotenv').config();
 
 // Adiciona a coluna só se ela ainda não existir. Serve para atualizar bancos
 // criados por versões antigas do sistema, sem esconder erros reais.
@@ -142,7 +143,14 @@ async function inicializarBanco() {
   // 5. Usuário admin inicial
   const admin = await dbGet('SELECT id FROM usuarios WHERE email = ?', ['admin@biomapet.com']);
   if (!admin) {
-    const senhaHash = await bcrypt.hash('123456', 10);
+    const senhaInicial = process.env.ADMIN_SENHA_INICIAL;
+    if (!senhaInicial && process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_SENHA_INICIAL não definida. Defina a senha inicial do admin no ambiente.');
+    }
+    if (!senhaInicial) {
+      console.warn('ADMIN_SENHA_INICIAL não definida: admin criado com a senha padrão 123456 (só para desenvolvimento).');
+    }
+    const senhaHash = await bcrypt.hash(senhaInicial || '123456', 10);
     await dbRun(
       'INSERT INTO usuarios (nome, email, senha, permissoes) VALUES (?, ?, ?, ?)',
       ['Administrador', 'admin@biomapet.com', senhaHash, 'administrador']
