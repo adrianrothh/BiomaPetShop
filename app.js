@@ -4,7 +4,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
-const { dbGet, dbAll, dbRun } = require('./database/db-promise');
+const { dbGet, dbAll } = require('./database/db-promise');
 const bancoPronto = require('./database/init');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
@@ -13,7 +13,7 @@ const petsRoutes = require('./routes/pets.routes');
 const servicosRoutes = require('./routes/servicos.routes');
 const agendamentosRoutes = require('./routes/agendamentos.routes');
 const funcionariosRoutes = require('./routes/funcionarios.routes');
-const { verificarAutenticacao, verificarAdmin } = require('./middlewares/autenticacao');
+const { verificarAutenticacao } = require('./middlewares/autenticacao');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,19 +68,6 @@ app.use('/', funcionariosRoutes);
 
 app.get('/', (req, res) => {
   res.redirect('/login');
-});
-
-app.delete('/usuarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
-  try {
-    const row = await dbGet('SELECT email FROM usuarios WHERE id = ?', [req.params.id]);
-    if (row && row.email === 'admin@biomapet.com') {
-      return res.json({ ok: false, erro: 'nao_pode_excluir_admin' });
-    }
-    await dbRun('DELETE FROM usuarios WHERE id = ?', [req.params.id]);
-    res.json({ ok: true });
-  } catch {
-    res.json({ ok: false });
-  }
 });
 
 app.get('/dashboard', verificarAutenticacao, async (req, res) => {
