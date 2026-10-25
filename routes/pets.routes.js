@@ -38,7 +38,7 @@ router.get('/pets', verificarAutenticacao, async (req, res) => {
 router.post('/pets', verificarAutenticacao, async (req, res) => {
   const { nome, especie, raca, porte, cliente_id } = req.body;
   if (!nome || !nome.trim() || !especie || !raca || !raca.trim() || !porte || !cliente_id) {
-    return res.json({ ok: false, erro: 'Campos obrigatórios faltando' });
+    return res.status(400).json({ ok: false, erro: 'Campos obrigatórios faltando' });
   }
   try {
     await dbRun(
@@ -48,14 +48,14 @@ router.post('/pets', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao criar pet:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
 router.put('/pets/:id', verificarAutenticacao, async (req, res) => {
   const { nome, especie, raca, porte, cliente_id } = req.body;
   if (!nome || !nome.trim() || !especie || !raca || !raca.trim() || !porte || !cliente_id) {
-    return res.json({ ok: false, erro: 'Campos obrigatórios faltando' });
+    return res.status(400).json({ ok: false, erro: 'Campos obrigatórios faltando' });
   }
   try {
     await dbRun(
@@ -65,7 +65,7 @@ router.put('/pets/:id', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao editar pet:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -84,7 +84,7 @@ router.delete('/pets/:id', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir pet:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 

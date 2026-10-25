@@ -1,7 +1,7 @@
 const express = require('express');
 const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
-const { normalizarServicos, calcularValores, validarDependenciasServicos } = require('../utils/helpers');
+const { normalizarServicos, calcularValores, servicoSemPreRequisito } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -143,9 +143,10 @@ router.post('/agendamentos', verificarAutenticacao, async (req, res) => {
     const servicosSel = await dbAll(`SELECT * FROM servicos WHERE id IN (${placeholders})`, servicosIds);
     if (!servicosSel || !servicosSel.length) return renderErro('Serviço inválido.');
 
-    const nomes = servicosSel.map(s => s.nome.toLowerCase().trim());
-    if (!validarDependenciasServicos(nomes)) {
-      return renderErro('Tosa e Hidratação só podem ser agendados junto com Banho.');
+    const semPreRequisito = servicoSemPreRequisito(servicosSel);
+    if (semPreRequisito) {
+      const pre = await dbGet('SELECT nome FROM servicos WHERE id = ?', [semPreRequisito.pre_requisito_id]);
+      return renderErro(`${semPreRequisito.nome} só pode ser agendado junto com ${pre ? pre.nome : 'o serviço pré-requisito'}.`);
     }
 
     const { subtotal, desconto, valorFinal, campoPreco } = calcularValores(servicosSel, pet);
@@ -175,7 +176,7 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, 
   try {
     const inicio = req.query.inicio;
     const fim = req.query.fim;
-    if (!inicio || !fim) return res.json({ ok: false, dados: [] });
+    if (!inicio || !fim) return res.status(400).json({ ok: false, dados: [] });
     const dados = await dbAll(`
       SELECT a.id, a.data_hora, a.status, a.valor,
              c.nome AS cliente_nome, p.nome AS pet_nome,
@@ -194,7 +195,7 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, 
     res.json({ ok: true, dados: dados || [] });
   } catch (err) {
     console.error('Erro calendario dados:', err);
-    res.json({ ok: false, dados: [] });
+    res.status(500).json({ ok: false, dados: [] });
   }
 });
 
@@ -287,9 +288,10 @@ router.post('/agendamentos/:id/editar', verificarAutenticacao, async (req, res) 
     const servicosSel = await dbAll(`SELECT * FROM servicos WHERE id IN (${placeholders})`, servicosIds);
     if (!servicosSel || !servicosSel.length) return renderErro('Serviço inválido.');
 
-    const nomes = servicosSel.map(s => s.nome.toLowerCase().trim());
-    if (!validarDependenciasServicos(nomes)) {
-      return renderErro('Tosa e Hidratação só podem ser agendados junto com Banho.');
+    const semPreRequisito = servicoSemPreRequisito(servicosSel);
+    if (semPreRequisito) {
+      const pre = await dbGet('SELECT nome FROM servicos WHERE id = ?', [semPreRequisito.pre_requisito_id]);
+      return renderErro(`${semPreRequisito.nome} só pode ser agendado junto com ${pre ? pre.nome : 'o serviço pré-requisito'}.`);
     }
 
     const { subtotal, desconto, valorFinal, campoPreco } = calcularValores(servicosSel, pet);
@@ -322,7 +324,7 @@ router.post('/agendamentos/:id/concluir', verificarAutenticacao, async (req, res
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao concluir agendamento:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -335,9 +337,8 @@ router.delete('/agendamentos/:id', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir agendamento:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
 module.exports = router;
-
