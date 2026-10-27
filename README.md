@@ -68,7 +68,7 @@ O sistema abrange o controle completo das seguintes entidades:
 - **[RN03] Validação de Conflito de Agendamento:** O mesmo pet não pode ter agendamentos sobrepostos para os mesmos serviços na mesma data e horário.
 - **[RN04] Dependência de Serviços:** Os serviços de Tosa e Hidratação possuem o serviço de Banho como pré-requisito obrigatório.
 - **[RN05] Exclusão em Cascata (Pets):** A exclusão de um registro de Pet deve remover em cascata todos os agendamentos vinculados a ele.
-- **[RN06] Privilégios Administrativos:** Apenas usuários com perfil Administrador podem visualizar dados sensíveis de senha e realizar a exclusão de usuários do sistema.
+- **[RN06] Privilégios Administrativos:** Apenas usuários com perfil Administrador podem redefinir a senha de outros usuários, sem visualizá-la, e realizar a exclusão de usuários do sistema.
 
 ---
 
