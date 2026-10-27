@@ -1,7 +1,18 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'biomapet.sqlite');
+// DB_PATH troca o banco (ex.: ':memory:' nos testes). Vazio usa o arquivo padrão;
+// caminho relativo é resolvido a partir da raiz do projeto, não da pasta de onde
+// o processo foi iniciado.
+function resolverCaminhoBanco(valor) {
+  if (!valor) return path.join(__dirname, 'biomapet.sqlite');
+  // ':memory:' é um nome especial do SQLite; resolvido viraria um arquivo com esse nome
+  if (valor === ':memory:') return valor;
+  if (path.isAbsolute(valor)) return valor;
+  return path.resolve(__dirname, '..', valor);
+}
+
+const dbPath = resolverCaminhoBanco(process.env.DB_PATH);
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
