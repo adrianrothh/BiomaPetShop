@@ -3,8 +3,9 @@ const { app, request, EMAIL_ADMIN, prepararBanco, limparBanco, login, fecharBanc
 const { inserirCliente, inserirPet, inserirFuncionario, inserirAgendamento } = require('../helpers/dados');
 const { dbGet, dbAll } = require('../../database/db-promise');
 
-// As rotas JSON respondem 200 também nos erros, com { ok: false, erro }. É o
-// comportamento atual: status e erro são conferidos separados para o BL-12.
+// Nos erros, as rotas JSON respondem { ok: false, erro } com o status HTTP do
+// caso (BL-12): 400 para campo obrigatório faltando ou senha curta, 409 para
+// email duplicado e 403 ao tentar excluir o admin.
 // O :id das rotas é o id do usuário (usuarios.id), não o da tabela funcionarios.
 
 let agente;
@@ -60,7 +61,7 @@ describe('POST /funcionarios', () => {
     await inserirFuncionario({ email: novoFuncionario.email });
 
     const res = await agente.post('/funcionarios').send(novoFuncionario);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('email_duplicado');
     expect(await dbAll('SELECT id FROM usuarios WHERE email = ?', [novoFuncionario.email])).toHaveLength(1);
@@ -68,7 +69,7 @@ describe('POST /funcionarios', () => {
 
   test('recusa o email do admin', async () => {
     const res = await agente.post('/funcionarios').send({ ...novoFuncionario, email: EMAIL_ADMIN });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('email_duplicado');
     expect(await dbAll('SELECT id FROM usuarios WHERE email = ?', [EMAIL_ADMIN])).toHaveLength(1);
@@ -80,7 +81,7 @@ describe('POST /funcionarios', () => {
     ['com senha de menos de 6 caracteres', { senha: '12345' }, 'senha_curta']
   ])('recusa cadastro %s', async (_, campos, erro) => {
     const res = await agente.post('/funcionarios').send({ ...novoFuncionario, ...campos });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe(erro);
     expect(await dbAll('SELECT id FROM funcionarios')).toEqual([]);
@@ -156,7 +157,7 @@ describe('PUT /funcionarios/:id', () => {
     const res = await agente
       .put(`/funcionarios/${funcionario.usuarioId}`)
       .send(dadosEdicao(funcionario, { nome: '' }));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('nome_obrigatorio');
   });
@@ -196,7 +197,7 @@ describe('DELETE /funcionarios/:id', () => {
     const admin = await dbGet('SELECT id FROM usuarios WHERE email = ?', [EMAIL_ADMIN]);
 
     const res = await agente.delete(`/funcionarios/${admin.id}`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('nao_pode_excluir_admin');
     expect(await dbGet('SELECT id FROM usuarios WHERE email = ?', [EMAIL_ADMIN])).toEqual({ id: admin.id });

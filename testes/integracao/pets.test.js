@@ -2,8 +2,8 @@ const { prepararBanco, limparBanco, login, fecharBanco } = require('../helpers/a
 const { inserirCliente, inserirPet, inserirAgendamento } = require('../helpers/dados');
 const { dbGet, dbAll } = require('../../database/db-promise');
 
-// As rotas JSON respondem 200 também nos erros, com { ok: false, erro }. É o
-// comportamento atual: status e erro são conferidos separados para o BL-12.
+// Nos erros, as rotas JSON respondem { ok: false, erro } com o status HTTP do
+// caso (BL-12): 400 para campos obrigatórios faltando.
 
 let agente;
 
@@ -50,7 +50,7 @@ describe('POST /pets', () => {
     const cliente = await inserirCliente();
 
     const res = await agente.post('/pets').send({ ...petValido(cliente.id), ...campos });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('Campos obrigatórios faltando');
     expect(await dbAll('SELECT id FROM pets')).toEqual([]);
@@ -83,7 +83,7 @@ describe('PUT /pets/:id', () => {
     const pet = await inserirPet(cliente.id);
 
     const res = await agente.put(`/pets/${pet.id}`).send({ ...petValido(cliente.id), ...campos });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('Campos obrigatórios faltando');
     expect((await buscarPet(pet.id)).nome).toBe(pet.nome);
