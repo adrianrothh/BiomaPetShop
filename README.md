@@ -168,10 +168,15 @@ npm test
 ### Executar via Docker
 ```bash
 docker build -t biomapet .
-docker run -p 3000:3000 -e SESSION_SECRET=<valor> -v biomapet-data:/app/database biomapet
+docker run -p 3000:3000 -e SESSION_SECRET=<valor> -e ADMIN_INITIAL_PASSWORD=<senha> -v biomapet-data:/app/database biomapet
 ```
 O volume em `/app/database` é obrigatório: sem ele, o banco SQLite se perde a cada
 recriação do container.
+
+A imagem roda com `NODE_ENV=production`, que exige `ADMIN_INITIAL_PASSWORD` num banco
+novo. Em produção o cookie de sessão só funciona por HTTPS; atrás de proxy, defina
+`TRUST_PROXY=1`. Para testar a imagem localmente por http://localhost, acrescente
+`-e NODE_ENV=development`.
 
 ---
 
