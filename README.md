@@ -68,7 +68,7 @@ O sistema abrange o controle completo das seguintes entidades:
 - **[RN03] Validação de Conflito de Agendamento:** O mesmo pet não pode ter agendamentos sobrepostos para os mesmos serviços na mesma data e horário.
 - **[RN04] Dependência de Serviços:** Os serviços de Tosa e Hidratação possuem o serviço de Banho como pré-requisito obrigatório.
 - **[RN05] Exclusão em Cascata (Pets):** A exclusão de um registro de Pet deve remover em cascata todos os agendamentos vinculados a ele.
-- **[RN06] Privilégios Administrativos:** Apenas usuários com perfil Administrador podem visualizar dados sensíveis de senha e realizar a exclusão de usuários do sistema.
+- **[RN06] Privilégios Administrativos:** Apenas usuários com perfil Administrador podem redefinir a senha de outros usuários, sem visualizá-la, e realizar a exclusão de usuários do sistema.
 
 ---
 
@@ -88,7 +88,8 @@ O sistema foi estruturado seguindo o padrão arquitetural MVC (Model-View-Contro
 ## 5. Estrutura de Diretórios
 ```
 bioma-manutencao/
-├── app.js             # Ponto de entrada: sessão, middlewares, dashboard
+├── server.js          # Ponto de entrada: inicializa o banco e sobe o servidor
+├── app.js             # Monta e exporta o app: sessão, middlewares, dashboard
 ├── routes/            # Rotas do sistema (roteamento, validação e queries)
 ├── views/             # Páginas renderizadas via EJS, organizadas por domínio
 ├── middlewares/       # Proteção de rotas e verificação de perfil
@@ -167,10 +168,15 @@ npm test
 ### Executar via Docker
 ```bash
 docker build -t biomapet .
-docker run -p 3000:3000 -e SESSION_SECRET=<valor> -v biomapet-data:/app/database biomapet
+docker run -p 3000:3000 -e SESSION_SECRET=<valor> -e ADMIN_INITIAL_PASSWORD=<senha> -v biomapet-data:/app/database biomapet
 ```
 O volume em `/app/database` é obrigatório: sem ele, o banco SQLite se perde a cada
 recriação do container.
+
+A imagem roda com `NODE_ENV=production`, que exige `ADMIN_INITIAL_PASSWORD` num banco
+novo. Em produção o cookie de sessão só funciona por HTTPS; atrás de proxy, defina
+`TRUST_PROXY=1`. Para testar a imagem localmente por http://localhost, acrescente
+`-e NODE_ENV=development`.
 
 ---
 

@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, res) => {
   try {
     const usuarios = await dbAll(`
-      SELECT u.id, u.nome, u.email, u.senha_texto, u.permissoes,
+      SELECT u.id, u.nome, u.email, u.permissoes,
              f.id AS func_id, f.telefone, f.ativo
       FROM usuarios u
       LEFT JOIN funcionarios f ON f.usuario_id = u.id
@@ -46,10 +46,9 @@ router.post('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, 
     const senhaHash = await bcrypt.hash(senha, 10);
 
     await dbTransaction(async () => {
-      // senha_texto armazena a senha legível para o botão "ver senha" no painel admin
       const result = await dbRun(
-        'INSERT INTO usuarios (nome, email, senha, senha_texto, permissoes) VALUES (?, ?, ?, ?, ?)',
-        [capitalize(nome), email.trim(), senhaHash, senha, 'funcionario']
+        'INSERT INTO usuarios (nome, email, senha, permissoes) VALUES (?, ?, ?, ?)',
+        [capitalize(nome), email.trim(), senhaHash, 'funcionario']
       );
       await dbRun(
         'INSERT INTO funcionarios (nome, telefone, email, usuario_id, ativo) VALUES (?, ?, ?, ?, 1)',
@@ -75,7 +74,7 @@ router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (re
 
     if (nova_senha && nova_senha.length >= 6) {
       const hash = await bcrypt.hash(nova_senha, 10);
-      await dbRun('UPDATE usuarios SET senha = ?, senha_texto = ? WHERE id = ?', [hash, nova_senha, usuarioId]);
+      await dbRun('UPDATE usuarios SET senha = ? WHERE id = ?', [hash, usuarioId]);
     }
 
     await dbRun(
