@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
+const helmet = require('helmet');
 const { dbGet, dbAll } = require('./database/db-promise');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
@@ -15,6 +16,11 @@ const funcionariosRoutes = require('./routes/funcionarios.routes');
 const { verificarAutenticacao } = require('./middlewares/autenticacao');
 
 const app = express();
+const emProducao = process.env.NODE_ENV === 'production';
+
+// Quantos proxies confiáveis ficam à frente do app (no Render, 1). Com 0, o
+// X-Forwarded-For é ignorado e req.ip é o IP da própria conexão.
+app.set('trust proxy', Number(process.env.TRUST_PROXY) || 0);
 
 // Sem segredo nao ha sessao confiavel: falha no boot em vez de assinar
 // os cookies com um valor previsivel.
@@ -29,6 +35,22 @@ if (!SESSION_SECRET) {
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Headers de segurança com os padrões do helmet. A CSP só libera o que as views
+// usam hoje: Bootstrap do jsDelivr, <script> inline e onclick/onchange.
+// TODO: endurecer a CSP (tirar o 'unsafe-inline') depois do BL-14.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", 'https://cdn.jsdelivr.net', "'unsafe-inline'"],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        // Em http local o navegador tentaria buscar os recursos por https.
+        upgradeInsecureRequests: emProducao ? [] : null
+      }
+    }
+  })
+);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -52,7 +74,10 @@ app.use(
     cookie: {
       maxAge: 1000 * 60 * 60 * 2, // 2 horas
       httpOnly: true,   // bloqueia acesso ao cookie via JavaScript
-      sameSite: 'lax'  // proteção básica contra CSRF
+      sameSite: 'lax',  // proteção básica contra CSRF
+      // Só trafega por HTTPS em produção. Atrás de proxy exige TRUST_PROXY: sem ele
+      // o express-session não envia o cookie e o login não se mantém.
+      secure: emProducao
     }
   })
 );
