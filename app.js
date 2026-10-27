@@ -5,7 +5,6 @@ const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const { dbGet, dbAll } = require('./database/db-promise');
-const bancoPronto = require('./database/init');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
 const clientesRoutes = require('./routes/clientes.routes');
@@ -16,7 +15,6 @@ const funcionariosRoutes = require('./routes/funcionarios.routes');
 const { verificarAutenticacao } = require('./middlewares/autenticacao');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Sem segredo nao ha sessao confiavel: falha no boot em vez de assinar
 // os cookies com um valor previsivel.
@@ -36,12 +34,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Em teste não passa store: o express-session usa a MemoryStore padrão e
+// nenhum sessions.sqlite é criado no disco.
+const sessionStore = process.env.NODE_ENV === 'test'
+  ? undefined
+  : new SQLiteStore({
+    db: 'sessions.sqlite',
+    dir: path.join(__dirname, 'database')
+  });
+
 app.use(
   session({
-    store: new SQLiteStore({
-      db: 'sessions.sqlite',
-      dir: './database'
-    }),
+    store: sessionStore,
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -141,13 +145,4 @@ app.get('/dashboard', verificarAutenticacao, async (req, res) => {
   }
 });
 
-bancoPronto
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Erro ao inicializar o banco:', err);
-    process.exit(1);
-  });
+module.exports = app;

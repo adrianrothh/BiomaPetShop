@@ -88,7 +88,8 @@ O sistema foi estruturado seguindo o padrão arquitetural MVC (Model-View-Contro
 ## 5. Estrutura de Diretórios
 ```
 bioma-manutencao/
-├── app.js             # Ponto de entrada: sessão, middlewares, dashboard
+├── server.js          # Ponto de entrada: inicializa o banco e sobe o servidor
+├── app.js             # Monta e exporta o app: sessão, middlewares, dashboard
 ├── routes/            # Rotas do sistema (roteamento, validação e queries)
 ├── views/             # Páginas renderizadas via EJS, organizadas por domínio
 ├── middlewares/       # Proteção de rotas e verificação de perfil
