@@ -271,7 +271,7 @@
     }
 
     function concluir(id) {
-      fetch(`/agendamentos/${id}/concluir`, { method: 'POST' })
+      fetch(`/agendamentos/${id}/concluir`, { method: 'POST', headers: { 'X-CSRF-Token': tokenCsrf() } })
         .then(r => r.json())
         .then(d => { if (d.ok) location.href = '/agendamentos?sucesso=concluido'; });
     }
@@ -284,7 +284,7 @@
 
     document.getElementById('btnConfirmarExcluir').addEventListener('click', () => {
       if (!_urlExcluir) return;
-      fetch(_urlExcluir, { method: 'DELETE' }).then(() => {
+      fetch(_urlExcluir, { method: 'DELETE', headers: { 'X-CSRF-Token': tokenCsrf() } }).then(() => {
         _modal.hide();
         location.href = '/agendamentos?sucesso=excluido';
       });

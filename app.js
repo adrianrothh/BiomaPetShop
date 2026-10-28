@@ -16,6 +16,7 @@ const agendamentosRoutes = require('./routes/agendamentos.routes');
 const funcionariosRoutes = require('./routes/funcionarios.routes');
 const { verificarAutenticacao } = require('./middlewares/autenticacao');
 const { naoEncontrado, tratarErro } = require('./middlewares/erros');
+const { tokenCsrf, protecaoCsrf } = require('./middlewares/csrf');
 const { asyncHandler } = require('./utils/asyncHandler');
 
 const app = express();
@@ -93,11 +94,18 @@ app.use(
   })
 );
 
-// Torna `usuario` disponível em todos os templates EJS sem precisar passar em cada res.render
+// Torna `usuario` disponível em todos os templates EJS sem precisar passar em cada res.render.
+// O csrfToken (BL-10) é uma função para que o token, e com ele a sessão de quem não está
+// logado, só seja criado nas telas que usam o token.
 app.use((req, res, next) => {
   res.locals.usuario = req.session.usuario || null;
+  res.locals.csrfToken = () => tokenCsrf(req);
   next();
 });
+
+// Proteção contra CSRF (BL-10). Fica antes das rotas e, portanto, antes do limite de
+// login: um POST /login sem token recebe 403 e não conta como tentativa.
+app.use(protecaoCsrf);
 
 app.use('/', autenticacaoRoutes);
 app.use('/', clientesRoutes);

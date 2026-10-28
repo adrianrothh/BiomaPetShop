@@ -1,4 +1,4 @@
-const { app, request, EMAIL_ADMIN, prepararBanco, limparBanco, login, fecharBanco } = require('../helpers/app');
+const { app, request, EMAIL_ADMIN, prepararBanco, limparBanco, enviarLogin, usarTokenDaPagina, login, fecharBanco } = require('../helpers/app');
 const { inserirFuncionario } = require('../helpers/dados');
 const bancoPronto = require('../../database/init');
 const { dbGet, dbRun } = require('../../database/db-promise');
@@ -25,8 +25,10 @@ beforeAll(async () => {
 beforeEach(limparBanco);
 afterAll(fecharBanco);
 
+// Abre a tela de login antes, para enviar o token anti-CSRF (BL-10): o agente precisa
+// ser um request.agent, que guarda o cookie da sessão entre o GET e o POST
 function postLogin(agente, email, senha) {
-  return agente.post('/login').type('form').send({ email, senha });
+  return enviarLogin(agente, email, senha);
 }
 
 function postTrocarSenha(agente, novaSenha, confirmarSenha = novaSenha) {
@@ -51,7 +53,8 @@ async function entrarComTrocaPendente(funcionario) {
   const res = await postLogin(agente, funcionario.email, funcionario.senha);
   expect(res.status).toBe(302);
   expect(res.headers.location).toBe('/trocar-senha');
-  return agente;
+  // O login troca a sessão e, com ela, o token: o token novo vem do formulário de troca
+  return usarTokenDaPagina(agente, '/trocar-senha');
 }
 
 describe('seed do admin', () => {
@@ -116,7 +119,7 @@ describe('POST /trocar-senha', () => {
     // Falha com mensagem clara se o login não redirecionar para /dashboard
     await login(funcionario.email, SENHA_NOVA);
 
-    const antiga = await postLogin(request(app), funcionario.email, SENHA_ATUAL);
+    const antiga = await postLogin(request.agent(app), funcionario.email, SENHA_ATUAL);
     expect(antiga.status).toBe(401);
     expect(antiga.text).toContain('Email ou senha inválidos.');
   });

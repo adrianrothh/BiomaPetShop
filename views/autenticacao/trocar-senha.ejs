@@ -89,6 +89,7 @@
         <% } %>
 
         <form action="/trocar-senha" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
           <div class="mb-3">
             <label for="nova_senha" class="form-label">Nova senha</label>
             <input type="password" class="form-control custom-input" id="nova_senha" name="nova_senha"

@@ -266,7 +266,7 @@
 
       fetch('/funcionarios', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, telefone: telefone || null, email, senha })
       }).then(r => r.json()).then(data => {
         if (data.ok) {
@@ -305,7 +305,7 @@
 
       fetch('/funcionarios/' + editandoId, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, telefone: telefone || null, ativo: parseInt(ativo), nova_senha: novaSenha || null })
       }).then(r => r.json()).then(data => {
         if (data.ok) location.href = '/funcionarios?sucesso=editado';
@@ -354,7 +354,7 @@
 
     document.getElementById('btnConfirmarExcluir').addEventListener('click', () => {
       if (!_idExcluir) return;
-      fetch('/funcionarios/' + _idExcluir, { method: 'DELETE' }).then(() => {
+      fetch('/funcionarios/' + _idExcluir, { method: 'DELETE', headers: { 'X-CSRF-Token': tokenCsrf() } }).then(() => {
         _modalConfirmar.hide();
         location.href = '/funcionarios?sucesso=excluido';
       });

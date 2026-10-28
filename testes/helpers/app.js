@@ -31,11 +31,35 @@ async function limparBanco() {
   await dbRun('DELETE FROM usuarios WHERE email != ?', [EMAIL_ADMIN]);
 }
 
-// Faz o login e devolve um agente do supertest que guarda o cookie da sessão.
-// Sem email e senha, entra como o admin semeado.
+// Token anti-CSRF da página (BL-10): o do <input name="_csrf"> dos formulários ou o da
+// <meta name="csrf-token"> do layout principal
+function tokenDaPagina(html, rota) {
+  const achado = /name="_csrf" value="([^"]+)"/.exec(html || '') ||
+    /name="csrf-token" content="([^"]+)"/.exec(html || '');
+  if (!achado) throw new Error(`A página ${rota} não tem token anti-CSRF`);
+  return achado[1];
+}
+
+// Abre a página e faz o agente enviar o token dela no header X-CSRF-Token em todas as
+// requisições seguintes (o agente.set do superagent vale para as próximas requisições)
+async function usarTokenDaPagina(agente, rota) {
+  const res = await agente.get(rota);
+  agente.set('X-CSRF-Token', tokenDaPagina(res.text, rota));
+  return agente;
+}
+
+// POST /login como o navegador faz: abre a tela de login, que cria a sessão com o token,
+// e envia o token no campo _csrf. Precisa de um request.agent, que guarda o cookie.
+async function enviarLogin(agente, email, senha) {
+  const pagina = await agente.get('/login');
+  return agente.post('/login').type('form').send({ email, senha, _csrf: tokenDaPagina(pagina.text, '/login') });
+}
+
+// Faz o login e devolve um agente do supertest que guarda o cookie da sessão e envia o
+// token anti-CSRF em toda requisição. Sem email e senha, entra como o admin semeado.
 async function login(email = EMAIL_ADMIN, senha = SENHA_ADMIN) {
   const agente = request.agent(app);
-  const res = await agente.post('/login').type('form').send({ email, senha });
+  const res = await enviarLogin(agente, email, senha);
 
   if (res.status !== 302 || res.headers.location !== '/dashboard') {
     const destino = res.headers.location ? ` para ${res.headers.location}` : '';
@@ -45,7 +69,8 @@ async function login(email = EMAIL_ADMIN, senha = SENHA_ADMIN) {
       `Login de ${email} falhou: esperado 302 para /dashboard, recebido ${res.status}${destino}.${motivo}`
     );
   }
-  return agente;
+  // O login troca a sessão e, com ela, o token: o token novo vem do dashboard
+  return usarTokenDaPagina(agente, '/dashboard');
 }
 
 // Fecha a conexão do banco em memória do arquivo de teste
@@ -62,6 +87,9 @@ module.exports = {
   SENHA_ADMIN,
   prepararBanco,
   limparBanco,
+  tokenDaPagina,
+  usarTokenDaPagina,
+  enviarLogin,
   login,
   fecharBanco
 };

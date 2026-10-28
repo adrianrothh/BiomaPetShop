@@ -34,6 +34,7 @@
             <% } %>
 
             <form action="/login" method="POST" class="mt-4">
+              <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
               <div class="mb-3">
                 <label for="email" class="form-label">Email:</label>
                 <input

@@ -54,6 +54,7 @@
       <% } %>
 
       <form action="/agendamentos/<%= agendamento.id %>/editar" method="POST" id="form-agendamento" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
 
         <!-- ── PET ── -->
         <div class="form-section"><i class="bi bi-heart-fill"></i> Pet</div>
