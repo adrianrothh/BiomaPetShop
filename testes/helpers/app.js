@@ -11,9 +11,9 @@ const SENHA_ADMIN = process.env.ADMIN_INITIAL_PASSWORD;
 async function prepararBanco() {
   await bancoPronto;
 
-  // A coluna deve_trocar_senha chega com o BL-09 (branch fix/bl09-troca-senha-obrigatoria,
-  // ainda não mergeada). Lá o admin nasce com deve_trocar_senha = 1 e, sem zerar,
-  // todo login dele seria redirecionado para /trocar-senha.
+  // A coluna deve_trocar_senha vem do BL-09 e o admin nasce com ela ligada. Sem zerar,
+  // todo login dele seria redirecionado para /trocar-senha, então o helper zera a flag
+  // para os testes que entram como admin.
   const colunas = await dbAll('PRAGMA table_info(usuarios)');
   if (colunas.some(c => c.name === 'deve_trocar_senha')) {
     await dbRun('UPDATE usuarios SET deve_trocar_senha = 0 WHERE email = ?', [EMAIL_ADMIN]);
