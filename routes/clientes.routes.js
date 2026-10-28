@@ -41,21 +41,21 @@ router.post('/clientes', verificarAutenticacao, async (req, res) => {
   const emailSanitizado = email && email.trim() ? email.trim() : null;
 
   if (!nome || !nome.trim() || !telefoneSanitizado || !telPattern.test(telefoneSanitizado) || !emailSanitizado || !emailPattern.test(emailSanitizado)) {
-    return res.json({ ok: false, erro: 'dados_invalidos' });
+    return res.status(400).json({ ok: false, erro: 'dados_invalidos' });
   }
 
   try {
     const dupTel = await dbGet('SELECT id FROM clientes WHERE telefone = ?', [telefoneSanitizado]);
-    if (dupTel) return res.json({ ok: false, erro: 'telefone_duplicado' });
+    if (dupTel) return res.status(409).json({ ok: false, erro: 'telefone_duplicado' });
 
     const dupEmail = await dbGet('SELECT id FROM clientes WHERE email = ?', [emailSanitizado]);
-    if (dupEmail) return res.json({ ok: false, erro: 'email_duplicado' });
+    if (dupEmail) return res.status(409).json({ ok: false, erro: 'email_duplicado' });
 
     await dbRun('INSERT INTO clientes (nome, telefone, email) VALUES (?, ?, ?)', [capitalize(nome), telefoneSanitizado, emailSanitizado]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao criar cliente:', err);
-    res.json({ ok: false, erro: 'erro_db' });
+    res.status(500).json({ ok: false, erro: 'erro_db' });
   }
 });
 
@@ -65,21 +65,21 @@ router.put('/clientes/:id', verificarAutenticacao, async (req, res) => {
   const emailSanitizado = email && email.trim() ? email.trim() : null;
 
   if (!nome || !nome.trim() || !telefoneSanitizado || !telPattern.test(telefoneSanitizado) || !emailSanitizado || !emailPattern.test(emailSanitizado)) {
-    return res.json({ ok: false, erro: 'dados_invalidos' });
+    return res.status(400).json({ ok: false, erro: 'dados_invalidos' });
   }
 
   try {
     const dupTel = await dbGet('SELECT id FROM clientes WHERE telefone = ? AND id != ?', [telefoneSanitizado, req.params.id]);
-    if (dupTel) return res.json({ ok: false, erro: 'telefone_duplicado' });
+    if (dupTel) return res.status(409).json({ ok: false, erro: 'telefone_duplicado' });
 
     const dupEmail = await dbGet('SELECT id FROM clientes WHERE email = ? AND id != ?', [emailSanitizado, req.params.id]);
-    if (dupEmail) return res.json({ ok: false, erro: 'email_duplicado' });
+    if (dupEmail) return res.status(409).json({ ok: false, erro: 'email_duplicado' });
 
     await dbRun('UPDATE clientes SET nome = ?, telefone = ?, email = ? WHERE id = ?', [capitalize(nome), telefoneSanitizado, emailSanitizado, req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao editar cliente:', err);
-    res.json({ ok: false, erro: 'erro_db' });
+    res.status(500).json({ ok: false, erro: 'erro_db' });
   }
 });
 
@@ -91,7 +91,7 @@ router.get('/clientes/:id/pets', verificarAutenticacao, async (req, res) => {
     );
     res.json({ ok: true, pets: pets || [] });
   } catch (err) {
-    res.json({ ok: false, pets: [] });
+    res.status(500).json({ ok: false, pets: [] });
   }
 });
 
@@ -114,7 +114,7 @@ router.delete('/clientes/:id', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir cliente:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 

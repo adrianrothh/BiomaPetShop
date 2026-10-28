@@ -176,7 +176,7 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, 
   try {
     const inicio = req.query.inicio;
     const fim = req.query.fim;
-    if (!inicio || !fim) return res.json({ ok: false, dados: [] });
+    if (!inicio || !fim) return res.status(400).json({ ok: false, dados: [] });
     const dados = await dbAll(`
       SELECT a.id, a.data_hora, a.status, a.valor,
              c.nome AS cliente_nome, p.nome AS pet_nome,
@@ -195,7 +195,7 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, 
     res.json({ ok: true, dados: dados || [] });
   } catch (err) {
     console.error('Erro calendario dados:', err);
-    res.json({ ok: false, dados: [] });
+    res.status(500).json({ ok: false, dados: [] });
   }
 });
 
@@ -324,7 +324,7 @@ router.post('/agendamentos/:id/concluir', verificarAutenticacao, async (req, res
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao concluir agendamento:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -337,9 +337,8 @@ router.delete('/agendamentos/:id', verificarAutenticacao, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir agendamento:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
 module.exports = router;
-

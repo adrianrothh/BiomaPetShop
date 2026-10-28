@@ -35,13 +35,13 @@ router.get('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, r
 router.post('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, res) => {
   const { nome, telefone, email, senha } = req.body;
 
-  if (!nome || !nome.trim())      return res.json({ ok: false, erro: 'nome_obrigatorio' });
-  if (!email || !email.trim())    return res.json({ ok: false, erro: 'email_obrigatorio' });
-  if (!senha || senha.length < 6) return res.json({ ok: false, erro: 'senha_curta' });
+  if (!nome || !nome.trim())      return res.status(400).json({ ok: false, erro: 'nome_obrigatorio' });
+  if (!email || !email.trim())    return res.status(400).json({ ok: false, erro: 'email_obrigatorio' });
+  if (!senha || senha.length < 6) return res.status(400).json({ ok: false, erro: 'senha_curta' });
 
   try {
     const existente = await dbGet('SELECT id FROM usuarios WHERE email = ?', [email.trim()]);
-    if (existente) return res.json({ ok: false, erro: 'email_duplicado' });
+    if (existente) return res.status(409).json({ ok: false, erro: 'email_duplicado' });
 
     const senhaHash = await bcrypt.hash(senha, 10);
 
@@ -59,7 +59,7 @@ router.post('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, 
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao criar funcionário:', err);
-    res.json({ ok: false, erro: 'erro_db' });
+    res.status(500).json({ ok: false, erro: 'erro_db' });
   }
 });
 
@@ -67,7 +67,7 @@ router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (re
   const { nome, telefone, ativo, nova_senha } = req.body;
   const usuarioId = req.params.id;
 
-  if (!nome || !nome.trim()) return res.json({ ok: false, erro: 'nome_obrigatorio' });
+  if (!nome || !nome.trim()) return res.status(400).json({ ok: false, erro: 'nome_obrigatorio' });
 
   try {
     await dbRun('UPDATE usuarios SET nome = ? WHERE id = ?', [capitalize(nome), usuarioId]);
@@ -85,7 +85,7 @@ router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (re
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao editar funcionário:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -112,16 +112,16 @@ router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdm
     res.json({ ok: true, agendamentos: agendamentos || [] });
   } catch (err) {
     console.error('Erro ao buscar agendamentos do funcionário:', err);
-    res.json({ ok: false, agendamentos: [] });
+    res.status(500).json({ ok: false, agendamentos: [] });
   }
 });
 
 router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
   const usuarioId = req.params.id;
   try {
-     const alvo = await dbGet('SELECT email FROM usuarios WHERE id = ?', [usuarioId]);
+    const alvo = await dbGet('SELECT email FROM usuarios WHERE id = ?', [usuarioId]);
     if (alvo && alvo.email === 'admin@biomapet.com') {
-      return res.json({ ok: false, erro: 'nao_pode_excluir_admin' });
+      return res.status(403).json({ ok: false, erro: 'nao_pode_excluir_admin' });
     }
 
     await dbTransaction(async () => {
@@ -136,9 +136,8 @@ router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async 
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir funcionário:', err);
-    res.json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
 module.exports = router;
-

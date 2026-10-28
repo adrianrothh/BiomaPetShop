@@ -2,8 +2,8 @@ const { prepararBanco, limparBanco, login, fecharBanco } = require('../helpers/a
 const { inserirCliente, inserirPet, inserirAgendamento } = require('../helpers/dados');
 const { dbGet, dbAll } = require('../../database/db-promise');
 
-// As rotas JSON respondem 200 também nos erros, com { ok: false, erro }. É o
-// comportamento atual: status e erro são conferidos separados para o BL-12.
+// Nos erros, as rotas JSON respondem { ok: false, erro } com o status HTTP do
+// caso (BL-12): 400 para dados inválidos e 409 para telefone ou email duplicado.
 
 let agente;
 
@@ -44,7 +44,7 @@ describe('POST /clientes', () => {
     await inserirCliente({ telefone: clienteValido.telefone });
 
     const res = await agente.post('/clientes').send(clienteValido);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('telefone_duplicado');
     expect(await contarClientes()).toBe(1);
@@ -54,7 +54,7 @@ describe('POST /clientes', () => {
     await inserirCliente({ email: clienteValido.email });
 
     const res = await agente.post('/clientes').send(clienteValido);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('email_duplicado');
     expect(await contarClientes()).toBe(1);
@@ -70,7 +70,7 @@ describe('POST /clientes', () => {
   ])('recusa dados inválidos: %s', async (_, campos) => {
     const res = await agente.post('/clientes').send({ ...clienteValido, ...campos });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('dados_invalidos');
     expect(await contarClientes()).toBe(0);
@@ -122,7 +122,7 @@ describe('PUT /clientes/:id', () => {
     const res = await agente
       .put(`/clientes/${cliente.id}`)
       .send({ nome: cliente.nome, telefone: outro.telefone, email: cliente.email });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('telefone_duplicado');
     expect((await buscarCliente(cliente.id)).telefone).toBe(cliente.telefone);
@@ -135,7 +135,7 @@ describe('PUT /clientes/:id', () => {
     const res = await agente
       .put(`/clientes/${cliente.id}`)
       .send({ nome: cliente.nome, telefone: cliente.telefone, email: outro.email });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('email_duplicado');
     expect((await buscarCliente(cliente.id)).email).toBe(cliente.email);
@@ -150,7 +150,7 @@ describe('PUT /clientes/:id', () => {
     const dados = { nome: cliente.nome, telefone: cliente.telefone, email: cliente.email };
 
     const res = await agente.put(`/clientes/${cliente.id}`).send({ ...dados, ...campos });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.erro).toBe('dados_invalidos');
     expect(await buscarCliente(cliente.id)).toEqual(dados);
