@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { dbGet, dbRun } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 const { rateLimit } = require('express-rate-limit');
 
 const router = express.Router();
@@ -49,7 +50,7 @@ router.get('/login', (req, res) => {
   });
 });
 
-router.post('/login', limiteLogin, async (req, res) => {
+router.post('/login', limiteLogin, asyncHandler(async (req, res) => {
   const { email, senha } = req.body;
 
   if (!email || !senha) {
@@ -104,6 +105,7 @@ router.post('/login', limiteLogin, async (req, res) => {
     res.redirect(usuario.deve_trocar_senha ? '/trocar-senha' : '/dashboard');
   } catch (err) {
     console.error('Erro no login:', err);
+    // Decisão consciente: o erro aparece na própria tela de login, e não na página de erro
     res.render('autenticacao/login', {
       title: 'Login - Bioma Pet',
       erro: 'Erro interno no servidor.',
@@ -111,7 +113,7 @@ router.post('/login', limiteLogin, async (req, res) => {
       cadastrado: false
     });
   }
-});
+}));
 
 router.get('/logout', (req, res) => {
   req.session.destroy(() => {
@@ -128,7 +130,7 @@ router.get('/esqueci-senha', (req, res) => {
   });
 });
 
-router.post('/esqueci-senha', limiteEsqueciSenha, async (req, res) => {
+router.post('/esqueci-senha', limiteEsqueciSenha, asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   const renderView = (erro, sucesso) =>
@@ -153,15 +155,17 @@ router.post('/esqueci-senha', limiteEsqueciSenha, async (req, res) => {
       );
     }
   } catch (err) {
+    // Só loga, de propósito: uma resposta de erro aqui poderia revelar se o e-mail
+    // existe, já que o UPDATE só roda para e-mail cadastrado
     console.error('Erro ao gerar reset de senha:', err);
   }
 
   // O envio de e-mail ainda não existe (DT-10). A mensagem é a mesma para e-mail
   // cadastrado ou não, para não revelar quais e-mails existem no sistema.
   return renderView(null, 'Solicitação registrada. A recuperação por e-mail ainda não está disponível: peça ao administrador para redefinir sua senha.');
-});
+}));
 
-router.get('/redefinir-senha/:token', async (req, res) => {
+router.get('/redefinir-senha/:token', asyncHandler(async (req, res, next) => {
   try {
     const usuario = await dbGet(
       'SELECT id FROM usuarios WHERE reset_token = ? AND reset_token_expiry > ?',
@@ -184,12 +188,11 @@ router.get('/redefinir-senha/:token', async (req, res) => {
       sucesso: null
     });
   } catch (err) {
-    console.error('Erro ao validar token:', err);
-    res.redirect('/esqueci-senha');
+    next(err);
   }
-});
+}));
 
-router.post('/redefinir-senha/:token', async (req, res) => {
+router.post('/redefinir-senha/:token', asyncHandler(async (req, res) => {
   const { nova_senha, confirmar_senha } = req.body;
 
   const renderView = (erro, sucesso) =>
@@ -231,9 +234,10 @@ router.post('/redefinir-senha/:token', async (req, res) => {
     });
   } catch (err) {
     console.error('Erro ao redefinir senha:', err);
+    // Decisão consciente: o erro volta no próprio formulário, e não na página de erro
     return renderView('Erro interno. Tente novamente.', null);
   }
-});
+}));
 
 // Troca de senha obrigatória (BL-09): usada quando usuarios.deve_trocar_senha = 1
 router.get('/trocar-senha', verificarAutenticacao, (req, res) => {
@@ -244,7 +248,7 @@ router.get('/trocar-senha', verificarAutenticacao, (req, res) => {
   });
 });
 
-router.post('/trocar-senha', verificarAutenticacao, async (req, res) => {
+router.post('/trocar-senha', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { nova_senha, confirmar_senha } = req.body;
 
   const renderView = (status, erro, sucesso) =>
@@ -274,9 +278,10 @@ router.post('/trocar-senha', verificarAutenticacao, async (req, res) => {
     return renderView(200, null, 'Senha alterada com sucesso!');
   } catch (err) {
     console.error('Erro ao trocar senha:', err);
+    // Decisão consciente: o erro volta no próprio formulário, e não na página de erro
     return renderView(500, 'Erro interno. Tente novamente.', null);
   }
-});
+}));
 
 router.get('/cadastro', (req, res) => res.redirect('/login'));
 router.post('/cadastro', (req, res) => res.redirect('/login'));

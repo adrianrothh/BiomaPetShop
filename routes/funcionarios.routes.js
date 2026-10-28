@@ -2,11 +2,12 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
 const { verificarAutenticacao, verificarAdmin } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize } = require('../utils/helpers');
 
 const router = express.Router();
 
-router.get('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, res) => {
+router.get('/funcionarios', verificarAutenticacao, verificarAdmin, asyncHandler(async (req, res, next) => {
   try {
     const usuarios = await dbAll(`
       SELECT u.id, u.nome, u.email, u.permissoes,
@@ -22,17 +23,11 @@ router.get('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, r
       sucesso: req.query.sucesso || null
     });
   } catch (err) {
-    console.error('Erro ao listar funcionários:', err);
-    res.render('funcionarios/index', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'funcionarios',
-      usuarios: [],
-      sucesso: null
-    });
+    next(err);
   }
-});
+}));
 
-router.post('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, res) => {
+router.post('/funcionarios', verificarAutenticacao, verificarAdmin, asyncHandler(async (req, res) => {
   const { nome, telefone, email, senha } = req.body;
 
   if (!nome || !nome.trim())      return res.status(400).json({ ok: false, erro: 'nome_obrigatorio' });
@@ -61,9 +56,9 @@ router.post('/funcionarios', verificarAutenticacao, verificarAdmin, async (req, 
     console.error('Erro ao criar funcionário:', err);
     res.status(500).json({ ok: false, erro: 'erro_db' });
   }
-});
+}));
 
-router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
+router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, asyncHandler(async (req, res) => {
   const { nome, telefone, ativo, nova_senha } = req.body;
   const usuarioId = req.params.id;
 
@@ -87,9 +82,9 @@ router.put('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (re
     console.error('Erro ao editar funcionário:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
-router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdmin, async (req, res) => {
+router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdmin, asyncHandler(async (req, res) => {
   try {
     const func = await dbGet('SELECT id FROM funcionarios WHERE usuario_id = ?', [req.params.id]);
     if (!func) return res.json({ ok: true, agendamentos: [] });
@@ -114,9 +109,9 @@ router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdm
     console.error('Erro ao buscar agendamentos do funcionário:', err);
     res.status(500).json({ ok: false, agendamentos: [] });
   }
-});
+}));
 
-router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async (req, res) => {
+router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, asyncHandler(async (req, res) => {
   const usuarioId = req.params.id;
   try {
     const alvo = await dbGet('SELECT email FROM usuarios WHERE id = ?', [usuarioId]);
@@ -138,6 +133,6 @@ router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, async 
     console.error('Erro ao excluir funcionário:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require('express');
 const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 const { normalizarServicos, calcularValores, servicoSemPreRequisito } = require('../utils/helpers');
 
 const router = express.Router();
@@ -20,7 +21,7 @@ async function carregarFormData() {
   return { pets: pets || [], servicos: servicos || [], funcionarios: funcionarios || [] };
 }
 
-router.get('/agendamentos', verificarAutenticacao, async (req, res) => {
+router.get('/agendamentos', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   const pagina = Math.max(1, parseInt(req.query.pagina) || 1);
   const offset = (pagina - 1) * LIMITE;
 
@@ -59,20 +60,11 @@ router.get('/agendamentos', verificarAutenticacao, async (req, res) => {
       sucesso: req.query.sucesso || null
     });
   } catch (err) {
-    console.error('Erro ao listar agendamentos:', err);
-    res.render('agendamentos/index', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'agendamentos',
-      agendamentos: [],
-      pagina: 1,
-      totalPaginas: 1,
-      total: 0,
-      sucesso: null
-    });
+    next(err);
   }
-});
+}));
 
-router.get('/agendamentos/novo', verificarAutenticacao, async (req, res) => {
+router.get('/agendamentos/novo', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   try {
     const { pets, servicos, funcionarios } = await carregarFormData();
     res.render('agendamentos/novo', {
@@ -81,12 +73,11 @@ router.get('/agendamentos/novo', verificarAutenticacao, async (req, res) => {
       pets, servicos, funcionarios, erro: null
     });
   } catch (err) {
-    console.error('Erro ao carregar form:', err);
-    res.redirect('/agendamentos');
+    next(err);
   }
-});
+}));
 
-router.post('/agendamentos', verificarAutenticacao, async (req, res) => {
+router.post('/agendamentos', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { pet_id, data, hora, observacoes, funcionario_id } = req.body;
   const servicosIds = normalizarServicos(req.body.servicos);
 
@@ -168,11 +159,13 @@ router.post('/agendamentos', verificarAutenticacao, async (req, res) => {
     res.redirect('/agendamentos?sucesso=criado');
   } catch (err) {
     console.error('Erro ao criar agendamento:', err);
-    renderErro('Erro ao salvar. Tente novamente.');
+    // Decisão consciente: o erro volta no próprio formulário, com a mensagem. Com o
+    // return, uma falha dentro do renderErro chega ao handler central.
+    return renderErro('Erro ao salvar. Tente novamente.');
   }
-});
+}));
 
-router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, res) => {
+router.get('/agendamentos/calendario-dados', verificarAutenticacao, asyncHandler(async (req, res) => {
   try {
     const inicio = req.query.inicio;
     const fim = req.query.fim;
@@ -197,9 +190,9 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, async (req, 
     console.error('Erro calendario dados:', err);
     res.status(500).json({ ok: false, dados: [] });
   }
-});
+}));
 
-router.get('/agendamentos/:id/editar', verificarAutenticacao, async (req, res) => {
+router.get('/agendamentos/:id/editar', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   try {
     const agendamento = await dbGet(`SELECT a.* FROM agendamentos a WHERE a.id = ?`, [req.params.id]);
     if (!agendamento) return res.redirect('/agendamentos');
@@ -220,12 +213,11 @@ router.get('/agendamentos/:id/editar', verificarAutenticacao, async (req, res) =
       servicosSelecionadosIds, data, hora, erro: null
     });
   } catch (err) {
-    console.error('Erro ao carregar form de edição:', err);
-    res.redirect('/agendamentos');
+    next(err);
   }
-});
+}));
 
-router.post('/agendamentos/:id/editar', verificarAutenticacao, async (req, res) => {
+router.post('/agendamentos/:id/editar', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { pet_id, data, hora, status, observacoes, funcionario_id } = req.body;
   const servicosIds = normalizarServicos(req.body.servicos);
   const id = req.params.id;
@@ -314,11 +306,13 @@ router.post('/agendamentos/:id/editar', verificarAutenticacao, async (req, res) 
     res.redirect('/agendamentos?sucesso=editado');
   } catch (err) {
     console.error('Erro ao editar agendamento:', err);
-    renderErro('Erro ao salvar. Tente novamente.');
+    // Decisão consciente: o erro volta no próprio formulário, com a mensagem. Com o
+    // return, uma falha dentro do renderErro (ex.: id inexistente) chega ao handler central.
+    return renderErro('Erro ao salvar. Tente novamente.');
   }
-});
+}));
 
-router.post('/agendamentos/:id/concluir', verificarAutenticacao, async (req, res) => {
+router.post('/agendamentos/:id/concluir', verificarAutenticacao, asyncHandler(async (req, res) => {
   try {
     await dbRun("UPDATE agendamentos SET status = 'concluido' WHERE id = ?", [req.params.id]);
     res.json({ ok: true });
@@ -326,9 +320,9 @@ router.post('/agendamentos/:id/concluir', verificarAutenticacao, async (req, res
     console.error('Erro ao concluir agendamento:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
-router.delete('/agendamentos/:id', verificarAutenticacao, async (req, res) => {
+router.delete('/agendamentos/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   try {
     await dbTransaction(async () => {
       await dbRun('DELETE FROM agendamento_servicos WHERE agendamento_id = ?', [req.params.id]);
@@ -339,6 +333,6 @@ router.delete('/agendamentos/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao excluir agendamento:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
 module.exports = router;

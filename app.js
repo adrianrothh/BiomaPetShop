@@ -14,6 +14,8 @@ const servicosRoutes = require('./routes/servicos.routes');
 const agendamentosRoutes = require('./routes/agendamentos.routes');
 const funcionariosRoutes = require('./routes/funcionarios.routes');
 const { verificarAutenticacao } = require('./middlewares/autenticacao');
+const { naoEncontrado, tratarErro } = require('./middlewares/erros');
+const { asyncHandler } = require('./utils/asyncHandler');
 
 const app = express();
 const emProducao = process.env.NODE_ENV === 'production';
@@ -99,7 +101,7 @@ app.get('/', (req, res) => {
   res.redirect('/login');
 });
 
-app.get('/dashboard', verificarAutenticacao, async (req, res) => {
+app.get('/dashboard', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   res.set('Cache-Control', 'no-store'); // impede que o browser exiba o dashboard após logout pelo botão voltar
   try {
     const [
@@ -159,15 +161,12 @@ app.get('/dashboard', verificarAutenticacao, async (req, res) => {
       totalHoje
     });
   } catch (err) {
-    console.error('Erro no dashboard:', err);
-    res.render('dashboard/dashboard', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'dashboard',
-      totalClientes: 0, totalPets: 0, totalServicos: 0,
-      ultimosClientes: [], agendamentos: [], ultimosPets: [],
-      ultimosFuncionarios: [], totalHoje: 0
-    });
+    next(err);
   }
-});
+}));
+
+// Tratamento de erro centralizado (BL-11): fica depois de todas as rotas
+app.use(naoEncontrado);
+app.use(tratarErro);
 
 module.exports = app;

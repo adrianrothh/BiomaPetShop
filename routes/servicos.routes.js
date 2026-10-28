@@ -1,10 +1,11 @@
 const express = require('express');
 const { dbAll, dbRun } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 
 const router = express.Router();
 
-router.get('/servicos', verificarAutenticacao, async (req, res) => {
+router.get('/servicos', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   try {
     const servicos = await dbAll('SELECT * FROM servicos ORDER BY nome ASC');
     res.render('servicos/index', {
@@ -13,16 +14,11 @@ router.get('/servicos', verificarAutenticacao, async (req, res) => {
       servicos: servicos || []
     });
   } catch (err) {
-    console.error('Erro ao listar serviços:', err);
-    res.render('servicos/index', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'servicos',
-      servicos: []
-    });
+    next(err);
   }
-});
+}));
 
-router.put('/servicos/:id', verificarAutenticacao, async (req, res) => {
+router.put('/servicos/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { preco_pequeno, preco_medio, preco_grande } = req.body;
 
   const precos = [preco_pequeno, preco_medio, preco_grande];
@@ -44,7 +40,7 @@ router.put('/servicos/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao atualizar serviço:', err);
     res.status(500).json({ ok: false, erro: 'erro_db' });
   }
-});
+}));
 
 module.exports = router;
 
