@@ -28,7 +28,7 @@
     <div class="section-card">
       <div class="search-bar">
         <i class="bi bi-search"></i>
-        <input type="text" placeholder="Buscar por nome ou e-mail..." id="busca">
+        <input type="search" placeholder="Buscar por nome ou e-mail..." id="busca" name="busca" autocomplete="off">
       </div>
 
       <table class="table-agendamentos" id="tabela-funcionarios">
@@ -124,11 +124,11 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">E-mail <span class="text-danger">*</span></label>
-            <input type="text" id="novo-email" class="form-control" placeholder="email@exemplo.com">
+            <input type="email" id="novo-email" class="form-control" placeholder="email@exemplo.com" autocomplete="off">
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Senha <span class="text-danger">*</span></label>
-            <input type="password" id="novo-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+            <input type="password" id="novo-senha" class="form-control" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
           </div>
         </div>
         <div class="modal-footer">
@@ -170,7 +170,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Nova senha <span class="fw-normal" style="color:#adb5bd;font-size:0.78rem;text-transform:none">(deixe em branco para manter)</span></label>
-            <input type="password" id="edit-nova-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+            <input type="password" id="edit-nova-senha" class="form-control" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
           </div>
         </div>
         <div class="modal-footer">
