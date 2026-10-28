@@ -33,7 +33,10 @@ function responderErro(req, res, status, err) {
   // Lido a cada requisição, e não no carregamento do módulo, para os testes alternarem o ambiente
   const mostrarDetalhe = process.env.NODE_ENV !== 'production';
 
+  // Layout sem sidebar (BL-14): a página também aparece para quem não está logado
   res.status(status).render('erro', {
+    layout: 'layouts/autenticacao',
+    title: `${titulo} - Bioma Pet`,
     status,
     titulo,
     mensagem: status === 404
