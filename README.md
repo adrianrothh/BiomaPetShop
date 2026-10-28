@@ -157,8 +157,9 @@ bioma-manutencao/
 5. Acessar no navegador:
    Abra o endereço http://localhost:3000 (ou a porta definida em `PORT`).
 
-   Credenciais criadas automaticamente no primeiro boot:
-   `admin@biomapet.com` / `123456` — troque antes de publicar em qualquer ambiente.
+   Credenciais criadas automaticamente no primeiro boot: `admin@biomapet.com`, com a
+   senha definida em `ADMIN_INITIAL_PASSWORD` (obrigatória em produção; em
+   desenvolvimento, sem ela, é `123456`), que o sistema obriga a trocar no primeiro login.
 
 ### Executar os testes
 ```bash

@@ -8,7 +8,7 @@ async function verificarAutenticacao(req, res, next) {
   try {
     // Confere no banco se o usuário ainda existe e está ativo
     const usuario = await dbGet(
-      `SELECT u.id, u.permissoes, f.ativo
+      `SELECT u.id, u.permissoes, u.deve_trocar_senha, f.ativo
        FROM usuarios u
        LEFT JOIN funcionarios f ON f.usuario_id = u.id
        WHERE u.id = ?`,
@@ -21,6 +21,12 @@ async function verificarAutenticacao(req, res, next) {
 
     // Mantém o perfil da sessão igual ao do banco
     req.session.usuario.permissoes = usuario.permissoes;
+
+    // Enquanto a troca de senha obrigatória não for feita, só a tela de troca fica liberada
+    if (usuario.deve_trocar_senha && req.path !== '/trocar-senha') {
+      return res.redirect('/trocar-senha');
+    }
+
     next();
   } catch (err) {
     next(err);

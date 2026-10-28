@@ -25,7 +25,8 @@ async function inicializarBanco() {
       permissoes TEXT NOT NULL,
       senha_texto TEXT,
       reset_token TEXT,
-      reset_token_expiry INTEGER
+      reset_token_expiry INTEGER,
+      deve_trocar_senha INTEGER DEFAULT 0
     )
   `);
 
@@ -123,6 +124,7 @@ async function inicializarBanco() {
   await adicionarColunaSeFaltar('funcionarios', 'cpf', 'TEXT');
   await adicionarColunaSeFaltar('funcionarios', 'email', 'TEXT');
   await adicionarColunaSeFaltar('funcionarios', 'usuario_id', 'INTEGER');
+  const colunaTrocaSenhaNova = await adicionarColunaSeFaltar('usuarios', 'deve_trocar_senha', 'INTEGER DEFAULT 0');
   const colunaPreRequisitoNova = await adicionarColunaSeFaltar('servicos', 'pre_requisito_id', 'INTEGER');
 
   // 4. Serviços padrão
@@ -173,10 +175,17 @@ async function inicializarBanco() {
       console.warn('ADMIN_INITIAL_PASSWORD não definida: admin criado com a senha padrão 123456 (só para desenvolvimento).');
     }
     const senhaHash = await bcrypt.hash(senhaInicial || '123456', 10);
+    // deve_trocar_senha = 1: o admin precisa escolher uma senha nova no primeiro login
     await dbRun(
-      'INSERT INTO usuarios (nome, email, senha, permissoes) VALUES (?, ?, ?, ?)',
+      'INSERT INTO usuarios (nome, email, senha, permissoes, deve_trocar_senha) VALUES (?, ?, ?, ?, 1)',
       ['Administrador', 'admin@biomapet.com', senhaHash, 'administrador']
     );
+  } else if (colunaTrocaSenhaNova) {
+    // Bancos antigos: se o admin ainda usa a senha padrão, obriga a troca no próximo login
+    const adminAtual = await dbGet('SELECT id, senha FROM usuarios WHERE email = ?', ['admin@biomapet.com']);
+    if (await bcrypt.compare('123456', adminAtual.senha)) {
+      await dbRun('UPDATE usuarios SET deve_trocar_senha = 1 WHERE id = ?', [adminAtual.id]);
+    }
   }
 }
 
