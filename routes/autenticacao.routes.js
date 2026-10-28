@@ -40,6 +40,13 @@ const limiteEsqueciSenha = rateLimit({
   }
 });
 
+// Layout das telas de autenticação (BL-14). O router é montado em '/', então o
+// middleware fica restrito aos caminhos daqui para não valer para as outras telas.
+router.use(['/login', '/esqueci-senha', '/redefinir-senha', '/trocar-senha'], (req, res, next) => {
+  res.locals.layout = 'layouts/autenticacao';
+  next();
+});
+
 router.get('/login', (req, res) => {
   if (req.session.usuario) return res.redirect('/dashboard');
   res.render('autenticacao/login', {

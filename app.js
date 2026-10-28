@@ -5,6 +5,7 @@ const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
+const expressLayouts = require('express-ejs-layouts');
 const { dbGet, dbAll } = require('./database/db-promise');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
@@ -37,6 +38,14 @@ if (!SESSION_SECRET) {
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Layouts compartilhados (BL-14): a view traz só o conteúdo do <body> e o layout monta
+// o documento. Os <style> e <script> da view vão para o fim do <head> e do <body>.
+// As telas de autenticação e a página de erro usam o layouts/autenticacao.
+app.set('layout', 'layouts/principal');
+app.set('layout extractScripts', true);
+app.set('layout extractStyles', true);
+app.use(expressLayouts);
 
 // Headers de segurança com os padrões do helmet. A CSP só libera o que as views
 // usam hoje: Bootstrap do jsDelivr, <script> inline e onclick/onchange.
