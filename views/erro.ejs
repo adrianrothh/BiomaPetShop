@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> - Bioma Pet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" rel="stylesheet">
+  <link rel="stylesheet" href="/css/login.css">
+  <style>
+    .erro-card {
+      width: 100%;
+      max-width: 460px;
+      background: #111827;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      padding: 44px 40px 34px;
+      text-align: center;
+    }
+    .erro-codigo {
+      font-size: 3.2rem;
+      font-weight: 700;
+      color: #10b981;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .erro-titulo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f9fafb;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+    .erro-texto {
+      color: #6b7280;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .erro-detalhe {
+      margin: 24px 0 0;
+      padding: 12px 14px;
+      max-height: 260px;
+      overflow: auto;
+      text-align: left;
+      font-size: 0.72rem;
+      color: #9ca3af;
+      background: #0d1421;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <main class="login-page d-flex align-items-center justify-content-center">
+    <div class="erro-card">
+
+      <div class="brand mb-4" style="justify-content:center; gap:10px;">
+        <svg class="brand-icon" width="32" height="24" viewBox="0 0 130 100" fill="#10b981" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="16" cy="38" rx="6" ry="8"/>
+          <ellipse cx="27" cy="32" rx="6" ry="8"/>
+          <ellipse cx="38" cy="32" rx="6" ry="8"/>
+          <ellipse cx="49" cy="38" rx="6" ry="8"/>
+          <path d="M32 48 C17 48 9 59 13 70 C16 79 24 85 32 85 C40 85 48 79 51 70 C55 59 47 48 32 48Z"/>
+          <ellipse cx="80" cy="12" rx="5.5" ry="7.5"/>
+          <ellipse cx="91" cy="6" rx="5.5" ry="7.5"/>
+          <ellipse cx="102" cy="6" rx="5.5" ry="7.5"/>
+          <ellipse cx="113" cy="12" rx="5.5" ry="7.5"/>
+          <path d="M96 22 C82 22 74 33 78 43 C81 52 89 57 96 57 C103 57 111 52 114 43 C118 33 110 22 96 22Z"/>
+        </svg>
+        <span class="brand-text" style="font-size:1.2rem;">Bioma Pet</span>
+      </div>
+
+      <p class="erro-codigo"><%= status %></p>
+      <h1 class="erro-titulo"><%= titulo %></h1>
+      <p class="erro-texto"><%= mensagem %></p>
+
+      <a href="<%= linkVolta %>" class="btn login-btn w-100">
+        <%= linkVolta === '/dashboard' ? 'Voltar ao painel' : 'Ir para o login' %>
+      </a>
+
+      <% if (detalhe) { %>
+        <pre class="erro-detalhe"><%= detalhe %></pre>
+      <% } %>
+
+    </div>
+  </main>
+</body>
+</html>

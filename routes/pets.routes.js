@@ -1,11 +1,12 @@
 const express = require('express');
 const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize } = require('../utils/helpers');
 
 const router = express.Router();
 
-router.get('/pets', verificarAutenticacao, async (req, res) => {
+router.get('/pets', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   try {
     const [pets, clientes] = await Promise.all([
       dbAll(`
@@ -24,18 +25,11 @@ router.get('/pets', verificarAutenticacao, async (req, res) => {
       sucesso: req.query.sucesso || null
     });
   } catch (err) {
-    console.error('Erro ao listar pets:', err);
-    res.render('pets/index', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'pets',
-      pets: [],
-      clientes: [],
-      sucesso: null
-    });
+    next(err);
   }
-});
+}));
 
-router.post('/pets', verificarAutenticacao, async (req, res) => {
+router.post('/pets', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { nome, especie, raca, porte, cliente_id } = req.body;
   if (!nome || !nome.trim() || !especie || !raca || !raca.trim() || !porte || !cliente_id) {
     return res.status(400).json({ ok: false, erro: 'Campos obrigatórios faltando' });
@@ -50,9 +44,9 @@ router.post('/pets', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao criar pet:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
-router.put('/pets/:id', verificarAutenticacao, async (req, res) => {
+router.put('/pets/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { nome, especie, raca, porte, cliente_id } = req.body;
   if (!nome || !nome.trim() || !especie || !raca || !raca.trim() || !porte || !cliente_id) {
     return res.status(400).json({ ok: false, erro: 'Campos obrigatórios faltando' });
@@ -67,9 +61,9 @@ router.put('/pets/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao editar pet:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
-router.delete('/pets/:id', verificarAutenticacao, async (req, res) => {
+router.delete('/pets/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const id = req.params.id;
   try {
     // Ordem importa: agendamento_servicos → agendamentos → pet (sem CASCADE nessa direção)
@@ -86,7 +80,7 @@ router.delete('/pets/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao excluir pet:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
 module.exports = router;
 

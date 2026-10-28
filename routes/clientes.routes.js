@@ -1,11 +1,12 @@
 const express = require('express');
 const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
+const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize, telPattern, emailPattern } = require('../utils/helpers');
 
 const router = express.Router();
 
-router.get('/clientes', verificarAutenticacao, async (req, res) => {
+router.get('/clientes', verificarAutenticacao, asyncHandler(async (req, res, next) => {
   try {
     const clientes = await dbAll(`
       SELECT c.*,
@@ -24,18 +25,11 @@ router.get('/clientes', verificarAutenticacao, async (req, res) => {
       sucesso: req.query.sucesso || null
     });
   } catch (err) {
-    console.error('Erro ao listar clientes:', err);
-    res.render('clientes/index', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'clientes',
-      clientes: [],
-      erro: null,
-      sucesso: null
-    });
+    next(err);
   }
-});
+}));
 
-router.post('/clientes', verificarAutenticacao, async (req, res) => {
+router.post('/clientes', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { nome, telefone, email } = req.body;
   const telefoneSanitizado = telefone && telefone.trim() ? telefone.trim() : null;
   const emailSanitizado = email && email.trim() ? email.trim() : null;
@@ -57,9 +51,9 @@ router.post('/clientes', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao criar cliente:', err);
     res.status(500).json({ ok: false, erro: 'erro_db' });
   }
-});
+}));
 
-router.put('/clientes/:id', verificarAutenticacao, async (req, res) => {
+router.put('/clientes/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const { nome, telefone, email } = req.body;
   const telefoneSanitizado = telefone && telefone.trim() ? telefone.trim() : null;
   const emailSanitizado = email && email.trim() ? email.trim() : null;
@@ -81,9 +75,9 @@ router.put('/clientes/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao editar cliente:', err);
     res.status(500).json({ ok: false, erro: 'erro_db' });
   }
-});
+}));
 
-router.get('/clientes/:id/pets', verificarAutenticacao, async (req, res) => {
+router.get('/clientes/:id/pets', verificarAutenticacao, asyncHandler(async (req, res) => {
   try {
     const pets = await dbAll(
       'SELECT id, nome, especie, raca, porte FROM pets WHERE cliente_id = ? ORDER BY nome ASC',
@@ -93,9 +87,9 @@ router.get('/clientes/:id/pets', verificarAutenticacao, async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, pets: [] });
   }
-});
+}));
 
-router.delete('/clientes/:id', verificarAutenticacao, async (req, res) => {
+router.delete('/clientes/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const id = req.params.id;
   try {
     // Ordem importa: agendamento_servicos → agendamentos → pets → cliente (sem CASCADE nessa direção)
@@ -116,7 +110,7 @@ router.delete('/clientes/:id', verificarAutenticacao, async (req, res) => {
     console.error('Erro ao excluir cliente:', err);
     res.status(500).json({ ok: false });
   }
-});
+}));
 
 module.exports = router;
 
