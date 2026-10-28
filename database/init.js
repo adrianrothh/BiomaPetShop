@@ -161,6 +161,9 @@ async function inicializarBanco() {
     }
   }
 
+  // Apaga as senhas legíveis gravadas por versões antigas (RNF04)
+  await dbRun('UPDATE usuarios SET senha_texto = NULL WHERE senha_texto IS NOT NULL');
+
   // 5. Usuário admin inicial
   const admin = await dbGet('SELECT id FROM usuarios WHERE email = ?', ['admin@biomapet.com']);
   if (!admin) {

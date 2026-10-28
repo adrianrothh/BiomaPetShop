@@ -103,7 +103,7 @@ Credenciais de acesso ao sistema. Todo login passa por esta tabela.
 | `email` | TEXT | NOT NULL, UNIQUE | Identificador de login |
 | `senha` | TEXT | NOT NULL | Hash bcrypt (custo 10) |
 | `permissoes` | TEXT | NOT NULL | `administrador` ou `funcionario` |
-| `senha_texto` | TEXT | — | **Senha em texto puro.** Ver [DT-01](debitos-tecnicos.md#dt-01--senha-em-texto-puro-no-banco-senha_texto) |
+| `senha_texto` | TEXT | — | Não é mais gravada nem exibida; o boot apaga os valores antigos e a coluna sai no BL-16. Ver [DT-01](debitos-tecnicos.md#dt-01--senha-em-texto-puro-no-banco-senha_texto) |
 | `reset_token` | TEXT | — | Token de redefinição (32 bytes hex) |
 | `reset_token_expiry` | INTEGER | — | Epoch em ms; validade de 1 hora |
 
@@ -251,7 +251,7 @@ banco) deixa registros órfãos. Ver
 | RN03 — mesmo pet sem serviços sobrepostos no mesmo horário | `JOIN` em `agendamento_servicos` na rota |
 | RN04 — Tosa e Hidratação exigem Banho | `validarDependenciasServicos()` em [utils/helpers.js](../utils/helpers.js) |
 | RN05 — excluir pet remove os agendamentos | Transação manual na rota de pets |
-| RN06 — só admin exclui usuário e vê senha | `verificarAdmin` + `usuarios.senha_texto` |
+| RN06 — só admin exclui usuário e redefine senha | `verificarAdmin` |
 
 Nenhuma dessas regras está expressa como constraint, trigger ou índice no banco: todas
 dependem do código da rota. Um `INSERT` manual passa por cima de todas elas.
