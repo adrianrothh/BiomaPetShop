@@ -94,6 +94,7 @@
       <div id="erro-email-vazio" class="alert alert-danger py-2 mb-3" style="display:none">Informe o e-mail.</div>
 
       <form action="/esqueci-senha" method="POST" id="form-esqueci">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
         <div class="mb-3">
           <label for="email" class="form-label">Email:</label>
           <input

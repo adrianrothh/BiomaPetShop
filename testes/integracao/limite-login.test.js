@@ -1,4 +1,4 @@
-const { app, request, EMAIL_ADMIN, SENHA_ADMIN, prepararBanco, fecharBanco } = require('../helpers/app');
+const { app, request, EMAIL_ADMIN, SENHA_ADMIN, prepararBanco, enviarLogin, fecharBanco } = require('../helpers/app');
 
 // Arquivo só para o limite de login. O contador do express-rate-limit fica em memória
 // e vale para o arquivo inteiro (todas as requisições vêm do mesmo IP), então o
@@ -7,8 +7,10 @@ const { app, request, EMAIL_ADMIN, SENHA_ADMIN, prepararBanco, fecharBanco } = r
 beforeAll(prepararBanco);
 afterAll(fecharBanco);
 
+// Cada tentativa é um navegador sem sessão: abre a tela de login, que traz o token
+// anti-CSRF (BL-10), e envia o formulário. O GET /login não conta no limite.
 function postLogin(email, senha) {
-  return request(app).post('/login').type('form').send({ email, senha });
+  return enviarLogin(request.agent(app), email, senha);
 }
 
 test('5 logins errados recebem 401 e o 6º recebe 429', async () => {

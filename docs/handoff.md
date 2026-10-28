@@ -186,7 +186,9 @@ intencional.
 Ver [DER §4](DER.md#4-integridade-referencial).
 
 **As sessões ficam em um SQLite separado** (`database/sessions.sqlite`), com cookie
-`httpOnly`, `sameSite: 'lax'` e validade de 2 horas.
+`httpOnly`, `sameSite: 'lax'` e validade de 2 horas. Desde o BL-10, quem abre o login ou
+a recuperação de senha também ganha uma sessão, ainda sem usuário, para guardar o token
+anti-CSRF, e o login troca essa sessão por uma nova. Ver a [seção 12](#12-proteção-contra-csrf).
 
 ---
 
@@ -364,3 +366,49 @@ hoje, os serviços padrão (`servicos.js`) e o admin inicial (`admin.js`).
 subir uma versão com migration nova ou de rodar `npm run migrate`. O boot aplica as
 migrations pendentes sozinho, então o backup vem antes de subir o servidor. Não existe
 comando para desfazer uma migration: se algo der errado, a volta é o backup.
+
+---
+
+## 12. Proteção contra CSRF
+
+Desde o BL-10, todo `POST`, `PUT` e `DELETE` precisa de um token anti-CSRF; `GET`,
+`HEAD` e `OPTIONS` não precisam. O token é aleatório, um por sessão, e fica em
+`req.session.csrfToken` ([middlewares/csrf.js](../middlewares/csrf.js)). Requisição sem o
+token certo recebe 403 antes de chegar à rota.
+
+### Como enviar o token
+
+- **Formulário:** logo depois do `<form>`, inclua
+  `<input type="hidden" name="_csrf" value="<%= csrfToken() %>">`.
+- **Chamada `fetch`:** envie o header `'X-CSRF-Token': tokenCsrf()`. A função
+  `tokenCsrf()` vem de [public/js/csrf.js](../public/js/csrf.js), que o
+  `layouts/principal` carrega junto com a `<meta name="csrf-token">`. O
+  `layouts/autenticacao` não tem a meta: nas telas dele, use formulário.
+- O token nunca vai na querystring. O campo `_csrf` só vale em corpo de formulário; em
+  JSON, só o header.
+
+### O que o usuário vê quando o token falha
+
+Acontece quando a sessão expirou ou quando houve login em outra aba, que troca a sessão
+e o token. O formulário recebe a página de erro com "A página ficou desatualizada ou a
+sessão expirou"; a chamada `fetch` que envia JSON recebe
+`{ ok: false, erro: 'requisicao_invalida' }`. O 403 não vai para o log.
+
+### Sessão de quem não está logado
+
+O `csrfToken()` das views é uma função: a sessão só é criada quando a tela usa o token
+(login, recuperação e redefinição de senha). Uma página de erro ou um arquivo estático
+não criam sessão. Essas sessões expiram em 2 horas, e o `connect-sqlite3` apaga as
+expiradas uma vez por dia. No login, `req.session.regenerate()` descarta a sessão anônima
+e cria outra; o token é trocado junto.
+
+O middleware roda antes do limite de login: `POST /login` sem token recebe 403 e não
+conta como tentativa. O cookie continua com `sameSite: 'lax'`; o `strict` faria quem
+chega por link externo aparecer deslogado.
+
+### Nos testes
+
+O `login()` de `testes/helpers/app.js` devolve um agente que já envia o token em toda
+requisição. Para um `POST /login` fora dele, use `enviarLogin(request.agent(app), email,
+senha)`: precisa ser `request.agent`, porque o GET da tela de login e o POST
+compartilham o cookie. A proteção em si é testada em `testes/integracao/csrf.test.js`.

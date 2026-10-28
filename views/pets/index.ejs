@@ -243,7 +243,7 @@
 
       fetch('/pets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, especie, raca, porte, cliente_id })
       }).then(r => r.json()).then(data => {
         if (data.ok) {
@@ -290,7 +290,7 @@
 
       fetch(`/pets/${petEditandoId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, especie, raca, porte, cliente_id })
       }).then(r => r.json()).then(data => {
         if (data.ok) location.href = '/pets?sucesso=editado';
@@ -305,7 +305,7 @@
 
     document.getElementById('btnConfirmarExcluir').addEventListener('click', () => {
       if (!_urlExcluir) return;
-      fetch(_urlExcluir, { method: 'DELETE' }).then(() => {
+      fetch(_urlExcluir, { method: 'DELETE', headers: { 'X-CSRF-Token': tokenCsrf() } }).then(() => {
         _modal.hide();
         location.href = '/pets?sucesso=excluido';
       });

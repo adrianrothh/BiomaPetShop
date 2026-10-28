@@ -102,14 +102,31 @@ router.post('/login', limiteLogin, asyncHandler(async (req, res) => {
       });
     }
 
-    req.session.usuario = {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      permissoes: usuario.permissoes
-    };
+    // Sessão nova a cada login (BL-10): a sessão anônima, que existe por causa do token
+    // anti-CSRF da tela de login, não vira a sessão logada, e o token é trocado junto,
+    // porque a sessão nova nasce sem ele. Os dados do login só são gravados aqui dentro.
+    req.session.regenerate((errSessao) => {
+      if (errSessao) {
+        console.error('Erro ao trocar a sessão no login:', errSessao);
+        // Mesma decisão do catch abaixo: o erro aparece na própria tela de login
+        return res.render('autenticacao/login', {
+          title: 'Login - Bioma Pet',
+          erro: 'Erro interno no servidor.',
+          sucesso: null,
+          cadastrado: false
+        });
+      }
 
-    res.redirect(usuario.deve_trocar_senha ? '/trocar-senha' : '/dashboard');
+      req.session.usuario = {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        permissoes: usuario.permissoes
+      };
+
+      // Troca de senha obrigatória (BL-09)
+      res.redirect(usuario.deve_trocar_senha ? '/trocar-senha' : '/dashboard');
+    });
   } catch (err) {
     console.error('Erro no login:', err);
     // Decisão consciente: o erro aparece na própria tela de login, e não na página de erro

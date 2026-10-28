@@ -1,4 +1,4 @@
-const { app, request, EMAIL_ADMIN, SENHA_ADMIN, prepararBanco, limparBanco, login, fecharBanco } = require('../helpers/app');
+const { app, request, EMAIL_ADMIN, SENHA_ADMIN, prepararBanco, limparBanco, enviarLogin, login, fecharBanco } = require('../helpers/app');
 const { inserirFuncionario } = require('../helpers/dados');
 
 // O limite de login conta as respostas com status 400 ou mais e vale para o arquivo
@@ -9,8 +9,10 @@ beforeAll(prepararBanco);
 beforeEach(limparBanco);
 afterAll(fecharBanco);
 
+// Abre a tela de login antes, para enviar o token anti-CSRF (BL-10): o agente precisa
+// ser um request.agent, que guarda o cookie da sessão entre o GET e o POST
 function postLogin(agente, email, senha) {
-  return agente.post('/login').type('form').send({ email, senha });
+  return enviarLogin(agente, email, senha);
 }
 
 describe('POST /login', () => {
@@ -26,14 +28,14 @@ describe('POST /login', () => {
   });
 
   test('com senha errada responde 401', async () => {
-    const res = await postLogin(request(app), EMAIL_ADMIN, 'senha-errada');
+    const res = await postLogin(request.agent(app), EMAIL_ADMIN, 'senha-errada');
 
     expect(res.status).toBe(401);
     expect(res.text).toContain('Email ou senha inválidos.');
   });
 
   test('com email inexistente responde 401', async () => {
-    const res = await postLogin(request(app), 'ninguem@biomapet.com', SENHA_ADMIN);
+    const res = await postLogin(request.agent(app), 'ninguem@biomapet.com', SENHA_ADMIN);
 
     expect(res.status).toBe(401);
     expect(res.text).toContain('Email ou senha inválidos.');
@@ -45,7 +47,7 @@ describe('POST /login', () => {
     ['sem senha', EMAIL_ADMIN, ''],
     ['sem email', '', SENHA_ADMIN]
   ])('%s responde 200 pedindo para preencher', async (_, email, senha) => {
-    const res = await postLogin(request(app), email, senha);
+    const res = await postLogin(request.agent(app), email, senha);
 
     expect(res.status).toBe(200);
     expect(res.text).toContain('Preencha email e senha.');

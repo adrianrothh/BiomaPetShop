@@ -227,7 +227,7 @@
 
       fetch('/clientes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, telefone, email })
       }).then(r => r.json()).then(data => {
         if (data.ok) {
@@ -299,7 +299,7 @@
 
       fetch('/clientes/' + clienteEditandoId, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tokenCsrf() },
         body: JSON.stringify({ nome, telefone, email })
       }).then(r => r.json()).then(data => {
         if (data.ok) {
@@ -322,7 +322,7 @@
 
     document.getElementById('btnConfirmarExcluir').addEventListener('click', () => {
       if (!_urlExcluir) return;
-      fetch(_urlExcluir, { method: 'DELETE' }).then(() => {
+      fetch(_urlExcluir, { method: 'DELETE', headers: { 'X-CSRF-Token': tokenCsrf() } }).then(() => {
         _modal.hide();
         location.href = '/clientes?sucesso=excluido';
       });

@@ -19,6 +19,16 @@ function esperaJson(req) {
   return Boolean(req.xhr || req.is('application/json') || req.accepts(['html', 'json']) === 'json');
 }
 
+function mensagemDoErro(status, err) {
+  if (status === 404) return 'O endereço acessado não existe ou foi removido.';
+  // Token anti-CSRF recusado (BL-10): quase sempre a página ficou aberta enquanto a sessão
+  // expirava ou era trocada por um login em outra aba
+  if (err && err.code === 'EBADCSRFTOKEN') {
+    return 'A página ficou desatualizada ou a sessão expirou. Abra a página de novo e repita a operação.';
+  }
+  return 'Não foi possível concluir a operação. Tente novamente em instantes.';
+}
+
 function usuarioDaSessao(req) {
   return req.session && req.session.usuario ? req.session.usuario : null;
 }
@@ -39,9 +49,7 @@ function responderErro(req, res, status, err) {
     title: `${titulo} - Bioma Pet`,
     status,
     titulo,
-    mensagem: status === 404
-      ? 'O endereço acessado não existe ou foi removido.'
-      : 'Não foi possível concluir a operação. Tente novamente em instantes.',
+    mensagem: mensagemDoErro(status, err),
     linkVolta: usuarioDaSessao(req) ? '/dashboard' : '/login',
     detalhe: mostrarDetalhe && err ? (err.stack || String(err)) : null
   }, (errView, html) => {

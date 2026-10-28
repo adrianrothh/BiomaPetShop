@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { app, request, EMAIL_ADMIN, prepararBanco, limparBanco, login, fecharBanco } = require('../helpers/app');
+const { app, request, EMAIL_ADMIN, prepararBanco, limparBanco, enviarLogin, login, fecharBanco } = require('../helpers/app');
 const { inserirCliente, inserirPet, inserirFuncionario, inserirAgendamento } = require('../helpers/dados');
 const { dbGet, dbAll } = require('../../database/db-promise');
 
@@ -29,8 +29,9 @@ function dadosEdicao(funcionario, campos = {}) {
   return { nome: funcionario.nome, telefone: funcionario.telefone, ativo: 1, nova_senha: null, ...campos };
 }
 
+// Login de um navegador sem sessão, com o token anti-CSRF da tela de login (BL-10)
 function postLogin(email, senha) {
-  return request(app).post('/login').type('form').send({ email, senha });
+  return enviarLogin(request.agent(app), email, senha);
 }
 
 describe('POST /funcionarios', () => {
