@@ -267,3 +267,100 @@ Vale levantá-las antes de planejar a próxima sprint.
 | [README.md](../README.md) | Visão geral, requisitos (RF/RNF), regras de negócio, execução |
 | [docs/DER.md](DER.md) | Modelo de dados, entidades, relacionamentos, integridade |
 | [docs/debitos-tecnicos.md](debitos-tecnicos.md) | 20 débitos catalogados com severidade e correção |
+
+---
+
+## 11. Migrations e seeds
+
+O schema é versionado em `database/migrations` (BL-15). A cada boot, o
+`database/init.js` aplica as migrations pendentes e depois roda os seeds. A tabela
+`schema_migrations` guarda o número, o nome e a data de cada migration aplicada.
+
+| Comando | O que faz |
+|---|---|
+| `npm run migrate` | Aplica as migrations pendentes no banco do `DB_PATH` e lista o que aplicou |
+| `npm run seed` | Insere os serviços padrão e o admin, se faltarem (precisa do schema pronto) |
+| `npm run init-db` | Os dois, nessa ordem; é o mesmo que o boot do servidor faz |
+
+A `001_schema_inicial` é o `init.js` de antes do BL-15. Num banco criado antes das
+migrations ela só completa o que falta, faz os ajustes de bancos antigos e é registrada,
+sem mexer nos dados.
+
+### Como criar uma migration
+
+1. **Nome:** `database/migrations/NNN_nome.js`, com o próximo número livre em três
+   dígitos e um nome curto em minúsculas (ex.: `002_cpf_unico_funcionarios.js`). O
+   número define a ordem e vira o `id` em `schema_migrations`. Um `.js` fora desse
+   padrão ou dois arquivos com o mesmo número impedem o boot.
+2. **`up(consulta)`:** a migration exporta `up`, que recebe `run`, `get` e `all` (os
+   mesmos parâmetros do `db-promise.js`) ligados à conexão que está sendo migrada. Use só
+   eles, nunca o `db` do app: os testes rodam as migrations em bancos próprios.
+
+   ```js
+   async function up({ run }) {
+     await run('ALTER TABLE pets ADD COLUMN observacoes TEXT');
+   }
+
+   module.exports = { up };
+   ```
+
+3. **SQL por extenso:** não importe constantes nem funções do app. A migration tem de dar
+   o mesmo resultado daqui a um ano, mesmo que o resto do código mude.
+4. **Transação:** por padrão a migration roda numa transação junto com o registro em
+   `schema_migrations`. Se falhar, nada fica aplicado nem registrado e o boot para com o
+   erro (a propriedade `migration` do erro diz qual falhou).
+5. **`transacao: false`:** só quando a migration precisa de algo que não funciona dentro
+   de transação. O caso típico é recriar uma tabela para mudar constraints no SQLite, o
+   que exige `PRAGMA foreign_keys = OFF`; dentro de transação esse PRAGMA é ignorado sem
+   erro. Nesse modo a migration abre a própria transação com `transacao`, confere as
+   chaves com `PRAGMA foreign_key_check` antes do COMMIT e religa as chaves no fim. O
+   registro em `schema_migrations` é feito depois que o `up` termina.
+
+   ```js
+   async function up({ run, all, transacao }) {
+     await run('PRAGMA foreign_keys = OFF');
+     try {
+       await transacao(async () => {
+         // CREATE TABLE x_nova, INSERT INTO x_nova SELECT ... FROM x,
+         // DROP TABLE x, ALTER TABLE x_nova RENAME TO x
+         const quebradas = await all('PRAGMA foreign_key_check');
+         if (quebradas.length) throw new Error('Chave estrangeira quebrada ao recriar x');
+       });
+     } finally {
+       await run('PRAGMA foreign_keys = ON');
+     }
+   }
+
+   module.exports = { up, transacao: false };
+   ```
+
+6. **Migration aplicada não se edita.** Nos bancos onde ela já rodou (o seu, o dos
+   colegas, o de produção), a mudança nunca seria aplicada, porque o runner só confere o
+   número. Para corrigir ou desfazer, crie uma migration nova com o próximo número. Pelo
+   mesmo motivo, não renumere nem apague migrations existentes.
+7. **Teste:** todo arquivo de teste de integração cria o banco em memória pelo runner, então
+   o `npm test` já roda a migration nova. Se ela mexe em dados, acrescente um caso em
+   `testes/integracao/migracoes.test.js`.
+
+### O que vai em seed
+
+Seeds (`database/seeds`) são os dados que todo banco precisa para o sistema funcionar:
+hoje, os serviços padrão (`servicos.js`) e o admin inicial (`admin.js`).
+
+- Rodam a cada boot, então só inserem o que falta, procurando pela chave natural (nome do
+  serviço, email do admin), e nunca alteram nem apagam o que já existe: o preço de um
+  serviço pode ter sido editado na tela.
+- Recebem a mesma `consulta` das migrations e não criam nem alteram tabelas.
+- Ajuste que só faz sentido uma vez por banco (corrigir dados antigos, preencher uma
+  coluna nova) não é seed: vai numa migration.
+- Dados de demonstração ou de teste não entram: o boot de produção também roda os seeds.
+- Seed novo: crie o arquivo em `database/seeds/` e chame-o no `database/seeds/index.js`,
+  depois dos seeds de que ele depende.
+
+### Antes de rodar em ambiente com dados reais
+
+**Faça backup do arquivo `.sqlite` antes.** Com o servidor parado, copie o
+`database/biomapet.sqlite` (ou o arquivo do `DB_PATH`, ou o volume do Docker) antes de
+subir uma versão com migration nova ou de rodar `npm run migrate`. O boot aplica as
+migrations pendentes sozinho, então o backup vem antes de subir o servidor. Não existe
+comando para desfazer uma migration: se algo der errado, a volta é o backup.
