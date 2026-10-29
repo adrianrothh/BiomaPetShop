@@ -64,6 +64,20 @@ app.use(
   })
 );
 
+// Health check para o Render e o HEALTHCHECK do Docker. Fica antes da sessão: não cria
+// sessão nem cookie a cada verificação e não passa pelo login nem pelo CSRF.
+// Consulta uma tabela do schema, e não só SELECT 1, para acusar também banco sem schema.
+app.get('/health', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    await dbGet('SELECT 1 FROM usuarios LIMIT 1');
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('Health check falhou:', err);
+    res.status(503).json({ status: 'erro' });
+  }
+});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));

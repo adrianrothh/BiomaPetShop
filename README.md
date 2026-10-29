@@ -179,6 +179,10 @@ novo. Em produção o cookie de sessão só funciona por HTTPS; atrás de proxy,
 `TRUST_PROXY=1`. Para testar a imagem localmente por http://localhost, acrescente
 `-e NODE_ENV=development`.
 
+A rota `GET /health` responde `200 {"status":"ok"}` quando o app e o banco estão de pé,
+e `503` quando o banco falha. Ela não exige login. A imagem já traz um `HEALTHCHECK`
+que usa essa rota. No Render, configure o *Health Check Path* como `/health`.
+
 ---
 
 Projeto desenvolvido para a disciplina de Manutenção e Melhoria de Software.
