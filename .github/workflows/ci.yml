@@ -16,4 +16,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Falha só com vulnerabilidade alta ou crítica nas dependências de produção, que são
+      # as que vão para a imagem. As de desenvolvimento (jest) não chegam ao servidor.
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high
       - run: npm test
