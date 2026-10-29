@@ -107,12 +107,12 @@
 
         <div class="section-card dash-card">
           <div class="section-title">
-            <i class="bi bi-calendar2-week-fill"></i> Agendamentos
+            <i class="bi bi-calendar2-week-fill"></i> Próximos Agendamentos
           </div>
           <% if (agendamentos.length === 0) { %>
             <div class="empty-state" style="padding: 24px 0">
               <i class="bi bi-calendar2-x"></i>
-              Nenhum agendamento cadastrado ainda.
+              Nenhum agendamento a partir de hoje.
             </div>
           <% } else { %>
             <div class="scroll-list dash-list">
@@ -120,7 +120,7 @@
                 <div class="dash-list-item">
                   <div class="dash-list-col">
                     <span class="nome-destaque"><%= a.pet_nome || '—' %></span>
-                    <span class="dash-list-meta"><%= a.servico_nome || '—' %></span>
+                    <span class="dash-list-meta"><%= a.servicos_nomes || '—' %></span>
                     <span class="dash-list-meta">
                       <%= new Date(a.data_hora.replace(' ', 'T')).toLocaleDateString('pt-BR') %>
                       &bull;

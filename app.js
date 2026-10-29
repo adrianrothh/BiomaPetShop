@@ -6,7 +6,7 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const expressLayouts = require('express-ejs-layouts');
-const { dbGet, dbAll } = require('./database/db-promise');
+const { dbGet } = require('./database/db-promise');
 
 const autenticacaoRoutes = require('./routes/autenticacao.routes');
 const clientesRoutes = require('./routes/clientes.routes');
@@ -14,10 +14,9 @@ const petsRoutes = require('./routes/pets.routes');
 const servicosRoutes = require('./routes/servicos.routes');
 const agendamentosRoutes = require('./routes/agendamentos.routes');
 const funcionariosRoutes = require('./routes/funcionarios.routes');
-const { verificarAutenticacao } = require('./middlewares/autenticacao');
+const dashboardRoutes = require('./routes/dashboard.routes');
 const { naoEncontrado, tratarErro } = require('./middlewares/erros');
 const { tokenCsrf, protecaoCsrf } = require('./middlewares/csrf');
-const { asyncHandler } = require('./utils/asyncHandler');
 
 const app = express();
 const emProducao = process.env.NODE_ENV === 'production';
@@ -127,74 +126,11 @@ app.use('/', petsRoutes);
 app.use('/', servicosRoutes);
 app.use('/', agendamentosRoutes);
 app.use('/', funcionariosRoutes);
+app.use('/', dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.redirect('/login');
 });
-
-app.get('/dashboard', verificarAutenticacao, asyncHandler(async (req, res, next) => {
-  res.set('Cache-Control', 'no-store'); // impede que o browser exiba o dashboard após logout pelo botão voltar
-  try {
-    const [
-      totalClientesRow,
-      totalPetsRow,
-      totalServicosRow,
-      ultimosClientes,
-      agendamentos,
-      ultimosPets,
-      ultimosFuncionarios
-    ] = await Promise.all([
-      dbGet('SELECT COUNT(*) AS total FROM clientes'),
-      dbGet('SELECT COUNT(*) AS total FROM pets'),
-      dbGet('SELECT COUNT(*) AS total FROM servicos'),
-      dbAll('SELECT nome, criado_em FROM clientes ORDER BY criado_em DESC'),
-      dbAll(`
-        SELECT a.id, a.data_hora, a.status,
-               p.nome AS pet_nome,
-               GROUP_CONCAT(s.nome, ', ') AS servico_nome
-        FROM agendamentos a
-        LEFT JOIN pets p ON a.pet_id = p.id
-        LEFT JOIN agendamento_servicos ag_s ON ag_s.agendamento_id = a.id
-        LEFT JOIN servicos s ON s.id = ag_s.servico_id
-        WHERE a.status != 'cancelado'
-        GROUP BY a.id
-        ORDER BY a.data_hora ASC
-      `),
-      dbAll(`
-        SELECT p.nome, p.especie, p.raca, c.nome AS cliente_nome
-        FROM pets p
-        LEFT JOIN clientes c ON c.id = p.cliente_id
-        ORDER BY p.id DESC
-      `),
-      dbAll(`
-        SELECT u.nome, u.email, f.telefone, f.ativo
-        FROM usuarios u
-        LEFT JOIN funcionarios f ON f.usuario_id = u.id
-        ORDER BY u.nome ASC
-      `)
-    ]);
-
-    const dataAtual = new Date();
-    // toISOString() retorna UTC — monta manualmente para não errar o dia no fuso horário local
-    const hoje = dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1).padStart(2, '0') + '-' + String(dataAtual.getDate()).padStart(2, '0');
-    const totalHoje = (agendamentos || []).filter(a => a.data_hora && a.data_hora.startsWith(hoje)).length;
-
-    res.render('dashboard/dashboard', {
-      usuario: req.session.usuario,
-      paginaAtiva: 'dashboard',
-      totalClientes: totalClientesRow ? totalClientesRow.total : 0,
-      totalPets: totalPetsRow ? totalPetsRow.total : 0,
-      totalServicos: totalServicosRow ? totalServicosRow.total : 0,
-      ultimosClientes: ultimosClientes || [],
-      agendamentos: agendamentos || [],
-      ultimosPets: ultimosPets || [],
-      ultimosFuncionarios: ultimosFuncionarios || [],
-      totalHoje
-    });
-  } catch (err) {
-    next(err);
-  }
-}));
 
 // Tratamento de erro centralizado (BL-11): fica depois de todas as rotas
 app.use(naoEncontrado);

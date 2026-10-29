@@ -70,7 +70,7 @@
                 </td>
                 <td><%= a.cliente_nome %></td>
                 <td><%= a.pet_nome %></td>
-                <td><%= a.servicos_nomes || a.servico_nome || '—' %></td>
+                <td><%= a.servicos_nomes || '—' %></td>
                 <td><%= a.funcionario_nome || '—' %></td>
                 <td><%= a.valor ? 'R$ ' + Number(a.valor).toFixed(2).replace('.', ',') : '—' %></td>
                 <td>

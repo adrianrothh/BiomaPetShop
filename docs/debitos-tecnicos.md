@@ -182,6 +182,13 @@ puros (ver [DT-15](#dt-15--testes-cobrem-só-utilshelpersjs)).
 com a lógica, deixando em `routes/` só o mapeamento. Não precisa ser de uma vez: começar
 por `agendamentos`, que é o maior e o mais duplicado.
 
+**Andamento (BL-19):** agendamentos e dashboard migrados. As quatro consultas com
+`GROUP_CONCAT` viraram uma só, em [models/agendamentos.model.js](../models/agendamentos.model.js);
+as regras de agenda de criação e edição ficaram numa função só (`aplicarRegras` no
+controller), testada sem subir o servidor; o `/dashboard` saiu do `app.js` para módulo
+próprio e as listas dele passaram a ter `LIMIT`. Faltam clientes, pets, serviços,
+funcionários e autenticação, seguindo o mesmo padrão.
+
 ---
 
 ## DT-08 — Erros engolidos: falha vira tela vazia

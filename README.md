@@ -89,8 +89,10 @@ O sistema foi estruturado seguindo o padrão arquitetural MVC (Model-View-Contro
 ```
 bioma-manutencao/
 ├── server.js          # Ponto de entrada: inicializa o banco e sobe o servidor
-├── app.js             # Monta e exporta o app: sessão, middlewares, dashboard
-├── routes/            # Rotas do sistema (roteamento, validação e queries)
+├── app.js             # Monta e exporta o app: sessão, middlewares e rotas
+├── routes/            # Mapeamento das URLs (nos módulos ainda não migrados, também validação e queries)
+├── controllers/       # Validação, regras de negócio e montagem das views
+├── models/            # Consultas SQL por entidade
 ├── views/             # Páginas renderizadas via EJS, organizadas por domínio
 ├── middlewares/       # Proteção de rotas e verificação de perfil
 ├── utils/             # Funções auxiliares e cálculos de negócio
@@ -101,9 +103,10 @@ bioma-manutencao/
 └── package.json       # Dependências e scripts do projeto
 ```
 
-> O projeto segue o padrão MVC de forma parcial: não existem camadas separadas de
-> `controllers` e `models` — a lógica e as queries vivem nos arquivos de `routes/`.
-> Essa divergência está registrada em [docs/debitos-tecnicos.md](docs/debitos-tecnicos.md).
+> O padrão MVC (RNF01) está em migração. Os módulos de **agendamentos** e **dashboard**
+> já seguem a separação `routes/` → `controllers/` → `models/` (BL-19) e servem de modelo
+> para os demais; em clientes, pets, serviços, funcionários e autenticação a lógica e as
+> queries ainda vivem nos arquivos de `routes/`. Ver [DT-07](docs/debitos-tecnicos.md).
 
 ---
 
