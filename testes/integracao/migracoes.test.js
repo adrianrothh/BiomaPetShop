@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const migrar = require('../../database/migrar');
 const semear = require('../../database/seeds');
 const migration001 = require('../../database/migrations/001_schema_inicial');
+const migration002 = require('../../database/migrations/002_integridade');
 const { criarConsulta } = require('../../database/db-promise');
 
 // Migrations e seeds (BL-15). Cada teste abre a própria conexão SQLite em memória, e
@@ -43,6 +44,16 @@ function criarPastaMigrations(arquivos) {
     fs.writeFileSync(path.join(pasta, nome), codigo);
   }
   return pasta;
+}
+
+// Pasta temporária só com a 001, para os testes dela não dependerem das migrations
+// seguintes. O arquivo carrega a 001 do projeto: uma cópia fora do projeto não acharia
+// o bcrypt que ela usa.
+function pastaSo001() {
+  const caminho001 = require.resolve('../../database/migrations/001_schema_inicial');
+  return criarPastaMigrations({
+    '001_schema_inicial.js': `module.exports = require(${JSON.stringify(caminho001)});`
+  });
 }
 
 // Troca variáveis de ambiente só durante fn e depois restaura; undefined apaga a variável
@@ -115,6 +126,28 @@ async function tabelaExiste({ get }, nome) {
 async function nomesDasColunas({ all }, tabela) {
   const colunas = await all(`PRAGMA table_info(${tabela})`);
   return colunas.map(c => c.name);
+}
+
+// Colunas na ordem da tabela, como no CREATE TABLE: nome, tipo, NOT NULL e DEFAULT
+async function descreverColunas({ all }, tabela) {
+  const colunas = await all(`PRAGMA table_info(${tabela})`);
+  return colunas.map(c => [
+    c.name,
+    c.type,
+    c.notnull ? 'NOT NULL' : '',
+    c.dflt_value === null ? '' : `DEFAULT ${c.dflt_value}`
+  ].filter(Boolean).join(' '));
+}
+
+// Chaves estrangeiras com a ação do ON DELETE, em ordem alfabética
+async function descreverChaves({ all }, tabela) {
+  const chaves = await all(`PRAGMA foreign_key_list(${tabela})`);
+  return chaves.map(c => `${c.from} -> ${c.table}(${c.to}) ON DELETE ${c.on_delete}`).sort();
+}
+
+async function sequencias({ all }) {
+  const linhas = await all('SELECT name, seq FROM sqlite_sequence ORDER BY name');
+  return Object.fromEntries(linhas.map(l => [l.name, l.seq]));
 }
 
 // Cliente, pet, funcionário com usuário, agendamentos e os serviços de cada um.
@@ -224,7 +257,7 @@ describe('banco vazio', () => {
   test('o runner aplica a 001 e registra uma linha em schema_migrations', async () => {
     const { conexao, consulta } = await abrirBanco();
 
-    expect(await migrar(conexao)).toEqual(['001_schema_inicial']);
+    expect(await migrar(conexao, pastaSo001())).toEqual(['001_schema_inicial']);
 
     const registro = await consulta.all('SELECT id, nome, aplicada_em FROM schema_migrations');
     expect(registro).toHaveLength(1);
@@ -240,10 +273,11 @@ describe('banco vazio', () => {
 
   test('rodar de novo não aplica nada nem muda o schema', async () => {
     const { conexao, consulta } = await abrirBanco();
-    await migrar(conexao);
+    const pasta = pastaSo001();
+    await migrar(conexao, pasta);
     const antes = await retratoSchema(consulta);
 
-    expect(await migrar(conexao)).toEqual([]);
+    expect(await migrar(conexao, pasta)).toEqual([]);
 
     expect(await retratoSchema(consulta)).toEqual(antes);
     expect(await idsRegistrados(consulta)).toEqual(['001']);
@@ -331,7 +365,7 @@ describe('banco criado antes das migrations', () => {
     const dadosAntes = await lerDados(consulta);
     const schemaAntes = await retratoSchema(consulta);
 
-    expect(await migrar(conexao)).toEqual(['001_schema_inicial']);
+    expect(await migrar(conexao, pastaSo001())).toEqual(['001_schema_inicial']);
     expect(await semear(conexao)).toEqual({ servicos: [], admin: false });
 
     expect(await idsRegistrados(consulta)).toEqual(['001']);
@@ -346,7 +380,7 @@ describe('banco antigo, sem pre_requisito_id e sem deve_trocar_senha', () => {
     await criarBancoAntigo(consulta, '123456');
     const antes = await lerDados(consulta);
 
-    expect(await migrar(conexao)).toEqual(['001_schema_inicial']);
+    expect(await migrar(conexao, pastaSo001())).toEqual(['001_schema_inicial']);
     expect(await semear(conexao)).toEqual({ servicos: [], admin: false });
 
     expect(await nomesDasColunas(consulta, 'usuarios')).toContain('deve_trocar_senha');
@@ -383,10 +417,255 @@ describe('banco antigo, sem pre_requisito_id e sem deve_trocar_senha', () => {
     const { conexao, consulta } = await abrirBanco();
     await criarBancoAntigo(consulta, 'senha-escolhida-789');
 
-    await migrar(conexao);
+    await migrar(conexao, pastaSo001());
     await semear(conexao);
 
     expect((await buscarUsuario(consulta, EMAIL_ADMIN)).deve_trocar_senha).toBe(0);
+  });
+});
+
+// Banco com a 001 e os seeds onde a 002 ainda não rodou
+async function abrirBancoNa001() {
+  const banco = await abrirBanco();
+  await migrar(banco.conexao, pastaSo001());
+  await semear(banco.conexao);
+  return banco;
+}
+
+// Um caso de cada tipo de órfão, gravado com as chaves desligadas, além de dados válidos.
+// Os ids são fixos para os asserts. Precisa dos serviços padrão no banco.
+async function inserirOrfaos({ run }) {
+  await run('PRAGMA foreign_keys = OFF');
+  await run("INSERT INTO clientes (id, nome) VALUES (1, 'Ana'), (2, 'Bia')");
+  await run("INSERT INTO usuarios (id, nome, email, senha, permissoes) VALUES (10, 'Carla', 'carla@teste.com', 'hash', 'funcionario')");
+  // Pets 1 e 2 válidos; o 3 sem cliente e o 4 com cliente que não existe
+  await run(`INSERT INTO pets (id, nome, especie, cliente_id) VALUES
+    (1, 'Rex', 'cao', 1), (2, 'Tom', 'gato', 2), (3, 'Sem Dono', 'cao', NULL), (4, 'Dono Sumiu', 'cao', 999)`);
+  // Funcionário 1 válido; o 2 sem usuário, o 3 com usuário que não existe e o 4 repete o usuário do 1
+  await run(`INSERT INTO funcionarios (id, nome, usuario_id) VALUES
+    (1, 'Carla', 10), (2, 'Sem Usuario', NULL), (3, 'Usuario Sumiu', 999), (4, 'Carla de Novo', 10)`);
+  // Agendamento 1 válido; 2 sem pet; 3 com pet que não existe; 4 do pet sem cliente válido;
+  // 5 do funcionário repetido; 6 do funcionário sem usuário; 7 com funcionário que não
+  // existe; 8 com a Ana como cliente, mas o Tom é da Bia (N5)
+  await run(`INSERT INTO agendamentos (id, cliente_id, pet_id, data_hora, funcionario_id) VALUES
+    (1, 1, 1, '2030-01-01 10:00:00', 1),
+    (2, 1, NULL, '2030-01-02 10:00:00', NULL),
+    (3, 1, 999, '2030-01-03 10:00:00', NULL),
+    (4, 1, 4, '2030-01-04 10:00:00', NULL),
+    (5, 1, 1, '2030-01-05 10:00:00', 4),
+    (6, 1, 1, '2030-01-06 10:00:00', 2),
+    (7, 1, 1, '2030-01-07 10:00:00', 999),
+    (8, 1, 2, '2030-01-08 10:00:00', NULL)`);
+  // Serviço 1 válido; o 2 é do agendamento do pet sem cliente; o 3 de agendamento que não
+  // existe; o 4 de serviço que não existe
+  await run(`INSERT INTO agendamento_servicos (id, agendamento_id, servico_id) VALUES
+    (1, 1, (SELECT id FROM servicos WHERE nome = 'Banho')),
+    (2, 4, (SELECT id FROM servicos WHERE nome = 'Banho')),
+    (3, 999, (SELECT id FROM servicos WHERE nome = 'Banho')),
+    (4, 1, 999)`);
+  await run("UPDATE servicos SET pre_requisito_id = 999 WHERE nome = 'Consulta Básica'");
+  await run('PRAGMA foreign_keys = ON');
+}
+
+describe('002_integridade', () => {
+  test('em banco vazio, cria as chaves novas e tira as colunas removidas', async () => {
+    const { conexao, consulta } = await abrirBanco();
+
+    expect(await migrar(conexao)).toEqual(['001_schema_inicial', '002_integridade']);
+
+    expect(await descreverColunas(consulta, 'pets')).toEqual([
+      'id INTEGER', 'nome TEXT NOT NULL', 'especie TEXT NOT NULL', 'raca TEXT', 'porte TEXT',
+      'cliente_id INTEGER NOT NULL'
+    ]);
+    expect(await descreverChaves(consulta, 'pets')).toEqual(['cliente_id -> clientes(id) ON DELETE CASCADE']);
+
+    expect(await descreverColunas(consulta, 'agendamentos')).toEqual([
+      'id INTEGER', 'pet_id INTEGER NOT NULL', 'data_hora DATETIME NOT NULL', "status TEXT DEFAULT 'pendente'",
+      'observacoes TEXT', 'valor REAL', 'desconto REAL DEFAULT 0', 'funcionario_id INTEGER'
+    ]);
+    expect(await descreverChaves(consulta, 'agendamentos')).toEqual([
+      'funcionario_id -> funcionarios(id) ON DELETE SET NULL',
+      'pet_id -> pets(id) ON DELETE CASCADE'
+    ]);
+
+    expect(await descreverColunas(consulta, 'funcionarios')).toEqual([
+      'id INTEGER', 'nome TEXT NOT NULL', 'telefone TEXT', 'ativo INTEGER DEFAULT 1',
+      'usuario_id INTEGER NOT NULL', 'criado_em DATETIME DEFAULT CURRENT_TIMESTAMP'
+    ]);
+    expect(await descreverChaves(consulta, 'funcionarios')).toEqual(['usuario_id -> usuarios(id) ON DELETE CASCADE']);
+    // O UNIQUE de usuario_id vira um índice único automático sobre a coluna
+    const [indice, ...outros] = await consulta.all('PRAGMA index_list(funcionarios)');
+    expect(outros).toEqual([]);
+    expect(indice).toMatchObject({ unique: 1, origin: 'u' });
+    expect((await consulta.all(`PRAGMA index_info(${indice.name})`)).map(c => c.name)).toEqual(['usuario_id']);
+
+    expect(await descreverColunas(consulta, 'usuarios')).toEqual([
+      'id INTEGER', 'nome TEXT NOT NULL', 'email TEXT NOT NULL', 'senha TEXT NOT NULL', 'permissoes TEXT NOT NULL',
+      'reset_token TEXT', 'reset_token_expiry INTEGER', 'deve_trocar_senha INTEGER DEFAULT 0'
+    ]);
+
+    // Recriar a agendamentos não muda a chave que aponta para ela
+    expect(await descreverChaves(consulta, 'agendamento_servicos')).toEqual([
+      'agendamento_id -> agendamentos(id) ON DELETE CASCADE',
+      'servico_id -> servicos(id) ON DELETE NO ACTION'
+    ]);
+  });
+
+  test('não muda clientes, servicos e agendamento_servicos', async () => {
+    const so001 = await abrirBanco();
+    await migrar(so001.conexao, pastaSo001());
+    const completo = await abrirBanco();
+    await migrar(completo.conexao);
+
+    const antes = await retratoSchema(so001.consulta);
+    const depois = await retratoSchema(completo.consulta);
+    for (const tabela of ['clientes', 'servicos', 'agendamento_servicos']) {
+      expect(depois.tabelas[tabela]).toEqual(antes.tabelas[tabela]);
+      const objetosDa = retrato => retrato.objetos.filter(o => o.tbl_name === tabela);
+      expect(objetosDa(depois)).toEqual(objetosDa(antes));
+    }
+  });
+
+  test('num banco populado depois da 001, preserva os dados e só tira as colunas removidas', async () => {
+    const { conexao, consulta } = await abrirBancoNa001();
+    await inserirDados(consulta);
+    const antes = await lerDados(consulta);
+    const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // O mockRestore apaga as chamadas registradas: a conferência vem antes dele
+    try {
+      expect(await migrar(conexao)).toEqual(['002_integridade']);
+      expect(aviso).not.toHaveBeenCalled();
+    } finally {
+      aviso.mockRestore();
+    }
+
+    const depois = await lerDados(consulta);
+    expect(depois.agendamentos).toEqual(semColunas(antes.agendamentos, 'cliente_id', 'servico_id'));
+    expect(depois.funcionarios).toEqual(semColunas(antes.funcionarios, 'cpf', 'email'));
+    expect(depois.usuarios).toEqual(semColunas(antes.usuarios, 'senha_texto'));
+    for (const tabela of ['clientes', 'pets', 'servicos', 'agendamento_servicos']) {
+      expect(depois[tabela]).toEqual(antes[tabela]);
+    }
+    expect(await consulta.all('PRAGMA foreign_key_check')).toEqual([]);
+  });
+
+  test('trata cada tipo de órfão na ordem e avisa quantas linhas cada passo mexeu', async () => {
+    const { conexao, consulta } = await abrirBancoNa001();
+    await inserirOrfaos(consulta);
+    const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      expect(await migrar(conexao)).toEqual(['002_integridade']);
+      expect(aviso.mock.calls.map(c => c[0])).toEqual([
+        'Migration 002_integridade: pets sem cliente válido removidos: 2',
+        'Migration 002_integridade: agendamentos sem pet válido removidos: 3',
+        'Migration 002_integridade: agendamento_servicos sem agendamento ou serviço válido removidos: 3',
+        'Migration 002_integridade: funcionarios sem usuário válido removidos: 2',
+        'Migration 002_integridade: agendamentos passados para o funcionário de menor id do mesmo usuário: 1',
+        'Migration 002_integridade: funcionarios com usuario_id repetido removidos: 1',
+        'Migration 002_integridade: agendamentos com funcionário inexistente, funcionario_id anulado: 2',
+        'Migration 002_integridade: servicos com pré-requisito inexistente, pre_requisito_id anulado: 1',
+        'Migration 002_integridade: agendamentos com cliente diferente do tutor do pet, que passam a mostrar o tutor atual: 1'
+      ]);
+    } finally {
+      aviso.mockRestore();
+    }
+
+    expect(await consulta.all('SELECT id FROM pets ORDER BY id')).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(await consulta.all('SELECT id, usuario_id FROM funcionarios ORDER BY id')).toEqual([{ id: 1, usuario_id: 10 }]);
+    // O 5 passou para a Carla de menor id; o 6 e o 7 perderam o funcionário
+    expect(await consulta.all('SELECT id, pet_id, funcionario_id FROM agendamentos ORDER BY id')).toEqual([
+      { id: 1, pet_id: 1, funcionario_id: 1 },
+      { id: 5, pet_id: 1, funcionario_id: 1 },
+      { id: 6, pet_id: 1, funcionario_id: null },
+      { id: 7, pet_id: 1, funcionario_id: null },
+      { id: 8, pet_id: 2, funcionario_id: null }
+    ]);
+    expect(await consulta.all('SELECT id FROM agendamento_servicos ORDER BY id')).toEqual([{ id: 1 }]);
+    expect(await listarServicos(consulta)).toEqual([
+      expect.objectContaining({ nome: 'Banho', pre_requisito: null }),
+      expect.objectContaining({ nome: 'Tosa', pre_requisito: 'Banho' }),
+      expect.objectContaining({ nome: 'Hidratação', pre_requisito: 'Banho' }),
+      expect.objectContaining({ nome: 'Consulta Básica', pre_requisito: null }),
+      expect.objectContaining({ nome: 'Corte de Unhas', pre_requisito: null })
+    ]);
+    expect(await consulta.get("SELECT pre_requisito_id FROM servicos WHERE nome = 'Consulta Básica'"))
+      .toEqual({ pre_requisito_id: null });
+
+    expect(await consulta.all('PRAGMA foreign_key_check')).toEqual([]);
+    expect(await consulta.get('PRAGMA foreign_keys')).toEqual({ foreign_keys: 1 });
+  });
+
+  test('preserva o sqlite_sequence: um insert novo não reaproveita id apagado', async () => {
+    const { conexao, consulta } = await abrirBancoNa001();
+    const { run } = consulta;
+    await inserirDados(consulta);
+    // Apaga os agendamentos, a Mia e a Carla: as três tabelas recriadas ficam com o
+    // sqlite_sequence acima do maior id, e agendamentos e funcionarios ficam vazias
+    await run('DELETE FROM agendamentos');
+    await run("DELETE FROM pets WHERE nome = 'Mia'");
+    await run('DELETE FROM funcionarios');
+    const antes = await sequencias(consulta);
+    expect(antes).toMatchObject({ pets: 2, agendamentos: 2, funcionarios: 1 });
+
+    await migrar(conexao);
+
+    expect(await sequencias(consulta)).toEqual(antes);
+    const pet = await run("INSERT INTO pets (nome, especie, cliente_id) VALUES ('Thor', 'cao', (SELECT id FROM clientes WHERE nome = 'Ana'))");
+    expect(pet.lastID).toBe(antes.pets + 1);
+    const agendamento = await run("INSERT INTO agendamentos (pet_id, data_hora) VALUES (?, '2030-01-01 10:00:00')", [pet.lastID]);
+    expect(agendamento.lastID).toBe(antes.agendamentos + 1);
+    const funcionario = await run("INSERT INTO funcionarios (nome, usuario_id) VALUES ('Carla', (SELECT id FROM usuarios WHERE email = 'carla@teste.com'))");
+    expect(funcionario.lastID).toBe(antes.funcionarios + 1);
+  });
+
+  test('rodar de novo não aplica nada nem muda o schema', async () => {
+    const { conexao, consulta } = await abrirBanco();
+    await migrar(conexao);
+    const antes = await retratoSchema(consulta);
+
+    expect(await migrar(conexao)).toEqual([]);
+
+    expect(await retratoSchema(consulta)).toEqual(antes);
+    expect(await idsRegistrados(consulta)).toEqual(['001', '002']);
+  });
+
+  test('com uma chave quebrada que ela não trata, desfaz tudo, não registra e religa as chaves', async () => {
+    const { conexao, consulta } = await abrirBancoNa001();
+    const { run } = consulta;
+    await inserirDados(consulta);
+    // Tabela fora do schema do app com uma chave quebrada: só o foreign_key_check do fim a vê
+    await run('CREATE TABLE extra (cliente_id INTEGER REFERENCES clientes(id))');
+    await run('PRAGMA foreign_keys = OFF');
+    await run('INSERT INTO extra (cliente_id) VALUES (999)');
+    await run('PRAGMA foreign_keys = ON');
+    const dadosAntes = await lerDados(consulta);
+    const schemaAntes = await retratoSchema(consulta);
+
+    const erro = await migrar(conexao).catch(err => err);
+
+    expect(erro).toBeInstanceOf(Error);
+    expect(erro.message).toBe('Chave estrangeira quebrada depois da 002_integridade: extra rowid 1 -> clientes');
+    expect(erro.migration).toBe('002_integridade');
+    expect(await idsRegistrados(consulta)).toEqual(['001']);
+    expect(await retratoSchema(consulta)).toEqual(schemaAntes);
+    expect(await lerDados(consulta)).toEqual(dadosAntes);
+    expect(await consulta.get('PRAGMA foreign_keys')).toEqual({ foreign_keys: 1 });
+  });
+
+  test('dentro de uma transação, para antes de mexer em qualquer coisa', async () => {
+    const { consulta } = await abrirBancoNa001();
+    await inserirDados(consulta);
+    const dadosAntes = await lerDados(consulta);
+
+    // Na transação o PRAGMA foreign_keys = OFF não tem efeito, e o DROP TABLE
+    // agendamentos apagaria o agendamento_servicos em cascata
+    await expect(consulta.transacao(() => migration002.up(consulta)))
+      .rejects.toThrow('A 002_integridade precisa das chaves estrangeiras desligadas');
+
+    expect(await lerDados(consulta)).toEqual(dadosAntes);
+    expect(await consulta.get('PRAGMA foreign_keys')).toEqual({ foreign_keys: 1 });
   });
 });
 

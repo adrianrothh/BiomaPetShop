@@ -36,8 +36,8 @@ router.get('/agendamentos', verificarAutenticacao, asyncHandler(async (req, res,
                GROUP_CONCAT(s.nome, ', ') AS servicos_nomes,
                f.nome AS funcionario_nome
         FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
         LEFT JOIN pets p ON a.pet_id = p.id
+        LEFT JOIN clientes c ON p.cliente_id = c.id
         LEFT JOIN agendamento_servicos ag_s ON ag_s.agendamento_id = a.id
         LEFT JOIN servicos s ON s.id = ag_s.servico_id
         LEFT JOIN funcionarios f ON f.id = a.funcionario_id
@@ -145,8 +145,8 @@ router.post('/agendamentos', verificarAutenticacao, asyncHandler(async (req, res
 
     await dbTransaction(async () => {
       const ag = await dbRun(
-        `INSERT INTO agendamentos (cliente_id, pet_id, data_hora, status, observacoes, valor, desconto, funcionario_id) VALUES (?, ?, ?, 'confirmado', ?, ?, ?, ?)`,
-        [pet.cliente_id, pet_id, data_hora, observacoes || null, valorFinal, desconto, funcId]
+        `INSERT INTO agendamentos (pet_id, data_hora, status, observacoes, valor, desconto, funcionario_id) VALUES (?, ?, 'confirmado', ?, ?, ?, ?)`,
+        [pet_id, data_hora, observacoes || null, valorFinal, desconto, funcId]
       );
       for (const s of servicosSel) {
         await dbRun(
@@ -176,8 +176,8 @@ router.get('/agendamentos/calendario-dados', verificarAutenticacao, asyncHandler
              GROUP_CONCAT(s.nome, ', ') AS servicos_nomes,
              f.nome AS funcionario_nome
       FROM agendamentos a
-      LEFT JOIN clientes c ON a.cliente_id = c.id
       LEFT JOIN pets p ON a.pet_id = p.id
+      LEFT JOIN clientes c ON p.cliente_id = c.id
       LEFT JOIN agendamento_servicos ag_s ON ag_s.agendamento_id = a.id
       LEFT JOIN servicos s ON s.id = ag_s.servico_id
       LEFT JOIN funcionarios f ON f.id = a.funcionario_id
@@ -291,8 +291,8 @@ router.post('/agendamentos/:id/editar', verificarAutenticacao, asyncHandler(asyn
 
     await dbTransaction(async () => {
       await dbRun(
-        `UPDATE agendamentos SET pet_id=?, cliente_id=?, data_hora=?, status=?, observacoes=?, valor=?, desconto=?, funcionario_id=? WHERE id=?`,
-        [pet_id, pet.cliente_id, data_hora, status, observacoes || null, valorFinal, desconto, funcId, id]
+        `UPDATE agendamentos SET pet_id=?, data_hora=?, status=?, observacoes=?, valor=?, desconto=?, funcionario_id=? WHERE id=?`,
+        [pet_id, data_hora, status, observacoes || null, valorFinal, desconto, funcId, id]
       );
       await dbRun(`DELETE FROM agendamento_servicos WHERE agendamento_id = ?`, [id]);
       for (const s of servicosSel) {
@@ -324,10 +324,8 @@ router.post('/agendamentos/:id/concluir', verificarAutenticacao, asyncHandler(as
 
 router.delete('/agendamentos/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   try {
-    await dbTransaction(async () => {
-      await dbRun('DELETE FROM agendamento_servicos WHERE agendamento_id = ?', [req.params.id]);
-      await dbRun('DELETE FROM agendamentos WHERE id = ?', [req.params.id]);
-    });
+    // Os serviços do agendamento saem em cascata (ON DELETE CASCADE)
+    await dbRun('DELETE FROM agendamentos WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir agendamento:', err);

@@ -46,8 +46,8 @@ router.post('/funcionarios', verificarAutenticacao, verificarAdmin, asyncHandler
         [capitalize(nome), email.trim(), senhaHash, 'funcionario']
       );
       await dbRun(
-        'INSERT INTO funcionarios (nome, telefone, email, usuario_id, ativo) VALUES (?, ?, ?, ?, 1)',
-        [capitalize(nome), telefone ? telefone.trim() : null, email.trim(), result.lastID]
+        'INSERT INTO funcionarios (nome, telefone, usuario_id, ativo) VALUES (?, ?, ?, 1)',
+        [capitalize(nome), telefone ? telefone.trim() : null, result.lastID]
       );
     });
 
@@ -95,8 +95,8 @@ router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdm
              p.nome AS pet_nome,
              GROUP_CONCAT(s.nome, ', ') AS servicos_nomes
       FROM agendamentos a
-      LEFT JOIN clientes c ON a.cliente_id = c.id
       LEFT JOIN pets p ON a.pet_id = p.id
+      LEFT JOIN clientes c ON p.cliente_id = c.id
       LEFT JOIN agendamento_servicos ag_s ON ag_s.agendamento_id = a.id
       LEFT JOIN servicos s ON s.id = ag_s.servico_id
       WHERE a.funcionario_id = ? AND a.status != 'cancelado'
@@ -119,15 +119,9 @@ router.delete('/funcionarios/:id', verificarAutenticacao, verificarAdmin, asyncH
       return res.status(403).json({ ok: false, erro: 'nao_pode_excluir_admin' });
     }
 
-    await dbTransaction(async () => {
-      const func = await dbGet('SELECT id FROM funcionarios WHERE usuario_id = ?', [usuarioId]);
-      if (func) {
-        // Preserva o histórico de agendamentos — apenas desvincula o funcionário
-        await dbRun('UPDATE agendamentos SET funcionario_id = NULL WHERE funcionario_id = ?', [func.id]);
-        await dbRun('DELETE FROM funcionarios WHERE id = ?', [func.id]);
-      }
-      await dbRun('DELETE FROM usuarios WHERE id = ?', [usuarioId]);
-    });
+    // O funcionário sai em cascata com o usuário (ON DELETE CASCADE) e os agendamentos dele
+    // ficam sem o vínculo (ON DELETE SET NULL), o que preserva o histórico (BL-16)
+    await dbRun('DELETE FROM usuarios WHERE id = ?', [usuarioId]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir funcionário:', err);

@@ -45,11 +45,10 @@ describe('POST /funcionarios', () => {
     expect(usuario.senha).not.toBe(novoFuncionario.senha);
     expect(await bcrypt.compare(novoFuncionario.senha, usuario.senha)).toBe(true);
 
-    const funcionario = await dbGet('SELECT nome, telefone, email, ativo, usuario_id FROM funcionarios WHERE usuario_id = ?', [usuario.id]);
+    const funcionario = await dbGet('SELECT nome, telefone, ativo, usuario_id FROM funcionarios WHERE usuario_id = ?', [usuario.id]);
     expect(funcionario).toEqual({
       nome: 'Ana Costa',
       telefone: '(11) 97777-6666',
-      email: 'ana@biomapet.com',
       ativo: 1,
       usuario_id: usuario.id
     });

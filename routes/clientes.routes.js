@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
+const { dbGet, dbAll, dbRun } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize, telPattern, emailPattern } = require('../utils/helpers');
@@ -92,19 +92,9 @@ router.get('/clientes/:id/pets', verificarAutenticacao, asyncHandler(async (req,
 router.delete('/clientes/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const id = req.params.id;
   try {
-    // Ordem importa: agendamento_servicos → agendamentos → pets → cliente (sem CASCADE nessa direção)
-    await dbTransaction(async () => {
-      await dbRun(`
-        DELETE FROM agendamento_servicos WHERE agendamento_id IN (
-          SELECT a.id FROM agendamentos a
-          INNER JOIN pets p ON a.pet_id = p.id
-          WHERE p.cliente_id = ?
-        )
-      `, [id]);
-      await dbRun('DELETE FROM agendamentos WHERE pet_id IN (SELECT id FROM pets WHERE cliente_id = ?)', [id]);
-      await dbRun('DELETE FROM pets WHERE cliente_id = ?', [id]);
-      await dbRun('DELETE FROM clientes WHERE id = ?', [id]);
-    });
+    // Os pets do cliente, os agendamentos deles e os serviços desses agendamentos saem em
+    // cascata (ON DELETE CASCADE, BL-16)
+    await dbRun('DELETE FROM clientes WHERE id = ?', [id]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir cliente:', err);

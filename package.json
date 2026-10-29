@@ -12,6 +12,7 @@
     "init-db": "node database/init.js",
     "migrate": "node database/migrar.js",
     "seed": "node database/seeds/index.js",
+    "diagnostico": "node database/diagnostico-orfaos.js",
     "test": "jest --verbose --runInBand"
   },
   "dependencies": {

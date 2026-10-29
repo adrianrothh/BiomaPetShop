@@ -137,10 +137,10 @@ Todas as rotas abaixo, exceto as de autenticação, exigem sessão ativa
 
 ### Clientes — [routes/clientes.routes.js](../routes/clientes.routes.js)
 `GET /clientes` · `POST /clientes` · `PUT /clientes/:id` ·
-`GET /clientes/:id/pets` (JSON) · `DELETE /clientes/:id` (cascata manual em transação)
+`GET /clientes/:id/pets` (JSON) · `DELETE /clientes/:id` (cascata pelo banco)
 
 ### Pets — [routes/pets.routes.js](../routes/pets.routes.js)
-`GET /pets` · `POST /pets` · `PUT /pets/:id` · `DELETE /pets/:id` (cascata manual)
+`GET /pets` · `POST /pets` · `PUT /pets/:id` · `DELETE /pets/:id` (cascata pelo banco)
 
 ### Serviços — [routes/servicos.routes.js](../routes/servicos.routes.js)
 `GET /servicos` · `PUT /servicos/:id` (só atualiza os três preços)
@@ -178,11 +178,11 @@ desconhecido cai em `preco_medio` silenciosamente.
 preço vigente no momento. Mudar o preço do serviço não reescreve o histórico — isso é
 intencional.
 
-**Um agendamento tem N serviços.** A coluna `agendamentos.servico_id` é legado da versão
-1:1 e não é mais usada; o vínculo real está em `agendamento_servicos`.
+**Um agendamento tem N serviços.** O vínculo está em `agendamento_servicos`. A coluna
+`agendamentos.servico_id`, legado da versão 1:1, saiu no BL-16.
 
-**Exclusão em cascata é feita em código, não pelo banco.** Sempre dentro de
-`dbTransaction()`, na ordem `agendamento_servicos` → `agendamentos` → `pets` → `clientes`.
+**Exclusão em cascata é feita pelo banco (BL-16).** As chaves estrangeiras têm
+`ON DELETE CASCADE` ou `SET NULL`, e as rotas fazem um único `DELETE` no registro principal.
 Ver [DER §4](DER.md#4-integridade-referencial).
 
 **As sessões ficam em um SQLite separado** (`database/sessions.sqlite`), com cookie
@@ -201,9 +201,10 @@ anti-CSRF, e o login troca essa sessão por uma nova. Ver a [seção 12](#12-pro
    corrigir** — detalhes e evidência em
    [DT-02](debitos-tecnicos.md#dt-02--alter-table-antes-do-create-table-quebra-banco-novo).
 
-2. **As senhas estão em texto puro no banco.** A coluna `usuarios.senha_texto` alimenta
-   um botão "ver senha" no painel admin. Trate qualquer cópia do `.sqlite` como material
-   sensível e não envie o arquivo por canal aberto ([DT-01](debitos-tecnicos.md#dt-01--senha-em-texto-puro-no-banco-senha_texto)).
+2. **O `.sqlite` guarda dados pessoais.** As senhas ficam só como hash bcrypt: o botão "ver
+   senha" saiu no BL-06 e a coluna `usuarios.senha_texto`, no BL-16. Mesmo assim, trate qualquer
+   cópia do `.sqlite` como material sensível (dados de clientes, tokens de redefinição de senha)
+   e não envie o arquivo por canal aberto ([DT-01](debitos-tecnicos.md#dt-01--senha-em-texto-puro-no-banco-senha_texto)).
 
 3. **Erro vira tela vazia.** Quase todo `catch` renderiza a página com listas vazias e
    contadores zerados. Se o dashboard aparecer zerado, olhe o log do servidor antes de
