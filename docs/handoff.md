@@ -88,18 +88,21 @@ npm test          # 26 testes, todos em testes/validacoes.test.js
 
 ```
 bioma-manutencao/
-├── app.js                  # entrada; sessão, middlewares, dashboard e DELETE /usuarios
+├── app.js                  # entrada; sessão, middlewares e montagem das rotas
 ├── database/
 │   ├── db.js               # conexão SQLite + PRAGMA foreign_keys
 │   ├── db-promise.js       # dbGet/dbAll/dbRun/dbTransaction (wrappers em Promise)
 │   └── init.js             # DDL + seed de serviços e do usuário admin
-├── routes/                 # roteamento + validação + SQL (não há controllers/models)
+├── routes/                 # mapeamento das URLs (+ validação e SQL nos módulos não migrados)
+│   ├── dashboard.routes.js
 │   ├── autenticacao.routes.js
 │   ├── clientes.routes.js
 │   ├── pets.routes.js
 │   ├── servicos.routes.js
 │   ├── agendamentos.routes.js
 │   └── funcionarios.routes.js
+├── controllers/            # validação, regras e views: agendamentos, dashboard (BL-19)
+├── models/                 # SQL por entidade: agendamentos, dashboard (BL-19)
 ├── middlewares/autenticacao.js   # verificarAutenticacao, verificarAdmin
 ├── utils/helpers.js              # capitalize, regex, cálculo de valores, RN04
 ├── views/                        # EJS por domínio + partials/sidebar
@@ -108,9 +111,13 @@ bioma-manutencao/
 └── docs/                         # esta documentação
 ```
 
-Observe que **não existem as pastas `src/`, `controllers/` e `models/`** que o README
-descrevia até esta rodada. A lógica de negócio mora nos arquivos de rota. É uma
-divergência conhecida: [DT-07](debitos-tecnicos.md#dt-07--não-existe-camada-de-model-nem-controller).
+**MVC em migração (BL-19).** Agendamentos e dashboard já estão separados em
+`routes/` (só o mapeamento) → `controllers/` (validação, regras, `res.render`) →
+`models/` (SQL). É o padrão a seguir nos demais módulos, que ainda concentram lógica e
+SQL nos arquivos de rota ([DT-07](debitos-tecnicos.md#dt-07--não-existe-camada-de-model-nem-controller)).
+Os agendamentos com os nomes de cliente, pet, serviços e funcionário saem de uma única
+consulta (`SELECT_COM_SERVICOS` em `models/agendamentos.model.js`), usada pela listagem,
+pelo calendário, pelo dashboard e pela agenda do funcionário.
 
 ---
 
@@ -132,8 +139,12 @@ Todas as rotas abaixo, exceto as de autenticação, exigem sessão ativa
 | Método | Rota | Nota |
 |---|---|---|
 | GET | `/` | Redireciona para `/login` |
-| GET | `/dashboard` | Contadores + listagens recentes; `Cache-Control: no-store` |
-| DELETE | `/usuarios/:id` | Admin conferido por e-mail hardcoded ([DT-09](debitos-tecnicos.md#dt-09--verificação-de-admin-por-e-mail-hardcoded)) |
+| GET | `/health` | Health check; consulta `usuarios` |
+
+### Dashboard — [routes/dashboard.routes.js](../routes/dashboard.routes.js)
+| Método | Rota | Nota |
+|---|---|---|
+| GET | `/dashboard` | Totais (RF17) + listas com no máximo 10 itens cada (RF18): clientes e pets mais recentes, próximos agendamentos não cancelados a partir de hoje e funcionários; `Cache-Control: no-store` |
 
 ### Clientes — [routes/clientes.routes.js](../routes/clientes.routes.js)
 `GET /clientes` · `POST /clientes` · `PUT /clientes/:id` ·
@@ -145,7 +156,7 @@ Todas as rotas abaixo, exceto as de autenticação, exigem sessão ativa
 ### Serviços — [routes/servicos.routes.js](../routes/servicos.routes.js)
 `GET /servicos` · `PUT /servicos/:id` (só atualiza os três preços)
 
-### Agendamentos — [routes/agendamentos.routes.js](../routes/agendamentos.routes.js)
+### Agendamentos — [routes/agendamentos.routes.js](../routes/agendamentos.routes.js) → [controller](../controllers/agendamentos.controller.js) → [model](../models/agendamentos.model.js)
 | Método | Rota | Nota |
 |---|---|---|
 | GET | `/agendamentos` | Paginado, 20 por página |

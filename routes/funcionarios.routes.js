@@ -4,6 +4,7 @@ const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise')
 const { verificarAutenticacao, verificarAdmin } = require('../middlewares/autenticacao');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize } = require('../utils/helpers');
+const Agendamento = require('../models/agendamentos.model');
 
 const router = express.Router();
 
@@ -89,20 +90,7 @@ router.get('/funcionarios/:id/agendamentos', verificarAutenticacao, verificarAdm
     const func = await dbGet('SELECT id FROM funcionarios WHERE usuario_id = ?', [req.params.id]);
     if (!func) return res.json({ ok: true, agendamentos: [] });
 
-    const agendamentos = await dbAll(`
-      SELECT a.id, a.data_hora, a.status,
-             c.nome AS cliente_nome,
-             p.nome AS pet_nome,
-             GROUP_CONCAT(s.nome, ', ') AS servicos_nomes
-      FROM agendamentos a
-      LEFT JOIN pets p ON a.pet_id = p.id
-      LEFT JOIN clientes c ON p.cliente_id = c.id
-      LEFT JOIN agendamento_servicos ag_s ON ag_s.agendamento_id = a.id
-      LEFT JOIN servicos s ON s.id = ag_s.servico_id
-      WHERE a.funcionario_id = ? AND a.status != 'cancelado'
-      GROUP BY a.id
-      ORDER BY a.data_hora ASC
-    `, [func.id]);
+    const agendamentos = await Agendamento.listarAtivosDoFuncionario(func.id);
 
     res.json({ ok: true, agendamentos: agendamentos || [] });
   } catch (err) {
