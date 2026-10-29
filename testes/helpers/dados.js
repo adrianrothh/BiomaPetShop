@@ -59,19 +59,20 @@ async function inserirFuncionario(dados = {}) {
     [funcionario.nome, funcionario.email, hash, 'funcionario']
   );
   const linhaFuncionario = await dbRun(
-    'INSERT INTO funcionarios (nome, telefone, email, usuario_id, ativo) VALUES (?, ?, ?, ?, ?)',
-    [funcionario.nome, funcionario.telefone, funcionario.email, usuario.lastID, funcionario.ativo]
+    'INSERT INTO funcionarios (nome, telefone, usuario_id, ativo) VALUES (?, ?, ?, ?)',
+    [funcionario.nome, funcionario.telefone, usuario.lastID, funcionario.ativo]
   );
   return { usuarioId: usuario.lastID, funcionarioId: linhaFuncionario.lastID, ...funcionario };
 }
 
 // Agendamento com um serviço, gravado como a rota grava. Serve para os cenários
 // de exclusão; as regras de agendamento são testadas pelas rotas no BL-04.
-async function inserirAgendamento({ clienteId, petId, funcionarioId = null, servico = 'Banho', dataHora = '2030-01-15 10:00:00' }) {
+// O cliente do agendamento é o tutor do pet (BL-16): um clienteId passado é ignorado.
+async function inserirAgendamento({ petId, funcionarioId = null, servico = 'Banho', dataHora = '2030-01-15 10:00:00' }) {
   const linhaServico = await dbGet('SELECT id, preco_medio FROM servicos WHERE nome = ?', [servico]);
   const agendamento = await dbRun(
-    "INSERT INTO agendamentos (cliente_id, pet_id, data_hora, status, valor, funcionario_id) VALUES (?, ?, ?, 'confirmado', ?, ?)",
-    [clienteId, petId, dataHora, linhaServico.preco_medio, funcionarioId]
+    "INSERT INTO agendamentos (pet_id, data_hora, status, valor, funcionario_id) VALUES (?, ?, 'confirmado', ?, ?)",
+    [petId, dataHora, linhaServico.preco_medio, funcionarioId]
   );
   await dbRun(
     'INSERT INTO agendamento_servicos (agendamento_id, servico_id, valor) VALUES (?, ?, ?)',

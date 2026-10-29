@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbGet, dbAll, dbRun, dbTransaction } = require('../database/db-promise');
+const { dbGet, dbAll, dbRun } = require('../database/db-promise');
 const { verificarAutenticacao } = require('../middlewares/autenticacao');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { capitalize } = require('../utils/helpers');
@@ -66,15 +66,8 @@ router.put('/pets/:id', verificarAutenticacao, asyncHandler(async (req, res) => 
 router.delete('/pets/:id', verificarAutenticacao, asyncHandler(async (req, res) => {
   const id = req.params.id;
   try {
-    // Ordem importa: agendamento_servicos → agendamentos → pet (sem CASCADE nessa direção)
-    await dbTransaction(async () => {
-      await dbRun(
-        'DELETE FROM agendamento_servicos WHERE agendamento_id IN (SELECT id FROM agendamentos WHERE pet_id = ?)',
-        [id]
-      );
-      await dbRun('DELETE FROM agendamentos WHERE pet_id = ?', [id]);
-      await dbRun('DELETE FROM pets WHERE id = ?', [id]);
-    });
+    // Os agendamentos do pet e os serviços deles saem em cascata (ON DELETE CASCADE, BL-16)
+    await dbRun('DELETE FROM pets WHERE id = ?', [id]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao excluir pet:', err);

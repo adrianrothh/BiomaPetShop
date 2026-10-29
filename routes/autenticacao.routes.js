@@ -296,7 +296,7 @@ router.post('/trocar-senha', verificarAutenticacao, asyncHandler(async (req, res
 
     const hash = await bcrypt.hash(nova_senha, 10);
     await dbRun(
-      'UPDATE usuarios SET senha = ?, senha_texto = NULL, deve_trocar_senha = 0 WHERE id = ?',
+      'UPDATE usuarios SET senha = ?, deve_trocar_senha = 0 WHERE id = ?',
       [hash, req.session.usuario.id]
     );
     return renderView(200, null, 'Senha alterada com sucesso!');

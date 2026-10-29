@@ -62,6 +62,14 @@ const VERIFICACOES = [
     `
   },
   {
+    titulo: 'servicos com pre_requisito_id de serviço inexistente',
+    sql: `
+      SELECT s.id FROM servicos s
+      LEFT JOIN servicos pre ON pre.id = s.pre_requisito_id
+      WHERE s.pre_requisito_id IS NOT NULL AND pre.id IS NULL
+    `
+  },
+  {
     // N5: o pet trocou de tutor e o agendamento ficou com o cliente antigo
     titulo: 'agendamentos cujo cliente_id difere do cliente do pet',
     requer: ['agendamentos', 'cliente_id'],
